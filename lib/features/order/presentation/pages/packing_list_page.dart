@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../provider/order_provider.dart';
-import '../models/order_model.dart';
+import '../../data/models/order_model.dart';
+import 'packing_detail_page.dart';
 
 class PackingListPage extends StatefulWidget {
   const PackingListPage({super.key});
@@ -11,141 +12,380 @@ class PackingListPage extends StatefulWidget {
 }
 
 class _PackingListPageState extends State<PackingListPage> {
-  String _selectedStatus = 'onprocess';
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Antrean Packing'),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          scrolledUnderElevation: 2,
+          titleTextStyle: const TextStyle(
+            color: Colors.black87,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(60),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: TabBar(
+                dividerColor: Colors.transparent,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.grey[600],
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicator: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                tabs: const [
+                  Tab(text: 'Pesanan Baru'),
+                  Tab(text: 'Tugas Saya'),
+                ],
+              ),
+            ),
+          ),
+        ),
+        body: const TabBarView(
+          children: [
+            _OrderListTab(status: 'onprocess'),
+            _OrderListTab(status: 'onpreparation'),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
+class _OrderListTab extends StatefulWidget {
+  final String status;
+  const _OrderListTab({required this.status});
+
+  @override
+  State<_OrderListTab> createState() => _OrderListTabState();
+}
+
+class _OrderListTabState extends State<_OrderListTab> {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OrderProvider>().fetchOrders(status: _selectedStatus);
+      context.read<OrderProvider>().fetchOrders(status: widget.status);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Packing List'),
-        actions: [
-          DropdownButton<String>(
-            value: _selectedStatus,
-            dropdownColor: Colors.blueAccent,
-            style: const TextStyle(color: Colors.white),
-            items: const [
-              DropdownMenuItem(value: 'onprocess', child: Text('On Process')),
-              DropdownMenuItem(value: 'onpreparation', child: Text('On Preparation')),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _selectedStatus = value);
-                context.read<OrderProvider>().fetchOrders(status: value);
-              }
-            },
-          ),
-          const SizedBox(width: 16),
-        ],
-      ),
-      body: Consumer<OrderProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return Consumer<OrderProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          if (provider.orders.isEmpty) {
-            return const Center(child: Text('No orders found'));
-          }
+        final filteredOrders = provider.orders.where((o) => o.status == widget.status).toList();
 
-          return RefreshIndicator(
-            onRefresh: () => provider.fetchOrders(status: _selectedStatus),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: provider.orders.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final order = provider.orders[index];
-                return _buildOrderCard(order);
-              },
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildOrderCard(OrderModel order) {
-    return Card(
-      elevation: 2,
-      child: ExpansionTile(
-        title: Text(
-          order.orderNumber,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text('${order.customerName} • ${order.items.length} items'),
-        trailing: _buildActionButtons(order),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
+        if (filteredOrders.isEmpty) {
+          return Center(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('Items:', style: TextStyle(fontWeight: FontWeight.bold)),
-                ...order.items.map((item) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('${item.quantity}x ${item.productName}'),
-                          Text('\$${item.subtotal.toStringAsFixed(2)}'),
-                        ],
-                      ),
-                    )),
-                const Divider(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Total Amount:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text('\$${order.totalAmount.toStringAsFixed(2)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                  ],
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.inventory_2_rounded, size: 64, color: Colors.blue[300]),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Belum ada pesanan',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[800]),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Pesanan yang masuk akan tampil di sini',
+                  style: TextStyle(color: Colors.grey[500]),
                 ),
               ],
             ),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: () => provider.fetchOrders(status: widget.status),
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: filteredOrders.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 16),
+            itemBuilder: (context, index) {
+              final order = filteredOrders[index];
+              return _PremiumOrderCard(order: order);
+            },
           ),
+        );
+      },
+    );
+  }
+}
+
+class _PremiumOrderCard extends StatelessWidget {
+  final OrderModel order;
+  const _PremiumOrderCard({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final isPreparation = order.status == 'onpreparation';
+    final isDelayed = DateTime.now().difference(order.createdAt).inMinutes > 30;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10)),
         ],
       ),
-    );
-  }
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            // Can always see details now!
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => PackingDetailPage(orderId: order.id)),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      order.orderNumber,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isPreparation ? const Color(0xFFF59E0B).withOpacity(0.15) : const Color(0xFF3B82F6).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        isPreparation ? '🟠 PREPARING' : '🟡 NEW ORDER',
+                        style: TextStyle(
+                          color: isPreparation ? const Color(0xFFD97706) : const Color(0xFF2563EB),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.access_time_rounded, size: 18, color: Colors.red),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('Pickup: ${order.pickupTime.hour.toString().padLeft(2, '0')}:${order.pickupTime.minute.toString().padLeft(2, '0')} WIB', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w800, fontSize: 16)),
+                    const SizedBox(width: 12),
+                    if (order.deliveryType == 'instant' || order.deliveryType == 'sameday')
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(6)),
+                        child: const Text('🚨 INSTANT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                      ),
+                  ],
+                ),
+                if (isDelayed) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.withOpacity(0.5)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Menunggu terlalu lama! (${DateTime.now().difference(order.createdAt).inMinutes} mnt)',
+                          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.person_rounded, size: 18, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(order.customerName, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 15)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.storefront_rounded, size: 18, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(order.orderSource, style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w500)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.shopping_bag_rounded, size: 18, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('${order.items.length} Barang', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w500)),
+                  ],
+                ),
+                if (order.assignedTo != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: const Color(0xFFF59E0B).withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                        child: const Icon(Icons.assignment_ind_rounded, size: 18, color: Color(0xFFD97706)),
+                      ),
+                      const SizedBox(width: 12),
+                      Text('Assigned to: ${order.assignedTo}', style: const TextStyle(color: Color(0xFFD97706), fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 20),
+                if (!isPreparation)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                          final adminName = await showDialog<String>(
+                            context: context,
+                            builder: (context) {
+                              final staffs = ['Andi', 'Budi', 'Citra', 'Deni', 'Eka', 'Fajar'];
+                              return AlertDialog(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                title: const Text('Siapa yang bertugas?', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                                content: Wrap(
+                                  spacing: 12,
+                                  runSpacing: 12,
+                                  alignment: WrapAlignment.center,
+                                  children: staffs.map((name) => ElevatedButton.icon(
+                                    icon: const Icon(Icons.person),
+                                    label: Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    ),
+                                    onPressed: () => Navigator.pop(context, name),
+                                  )).toList(),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Batal', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
 
-  Widget _buildActionButtons(OrderModel order) {
-    if (order.status == 'onprocess') {
-      return ElevatedButton(
-        onPressed: () => _handleStart(order.id),
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-        child: const Text('Start'),
-      );
-    } else if (order.status == 'onpreparation') {
-      return ElevatedButton(
-        onPressed: () => _handleFinish(order.id),
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-        child: const Text('Finish'),
-      );
-    }
-    return const SizedBox.shrink();
-  }
+                        if (adminName == null || adminName.trim().isEmpty) return;
 
-  Future<void> _handleStart(int id) async {
-    final success = await context.read<OrderProvider>().startOrder(id);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(success ? 'Preparation started' : 'Failed to start preparation')),
-    );
-  }
-
-  Future<void> _handleFinish(int id) async {
-    final success = await context.read<OrderProvider>().finishOrder(id);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(success ? 'Order finished' : 'Failed to finish order')),
+                        if (!context.mounted) return;
+                        final success = await context.read<OrderProvider>().startOrder(order.id, adminName.trim());
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(success ? 'Tugas Packing Diambil oleh ${adminName.trim()}!' : 'Gagal memproses'),
+                              backgroundColor: success ? const Color(0xFF10B981) : Colors.red,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                      ),
+                      child: const Text('Ambil Tugas Packing', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => PackingDetailPage(orderId: order.id)),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFF59E0B),
+                        side: BorderSide(color: const Color(0xFFF59E0B).withOpacity(0.5), width: 2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('Lanjutkan Packing', style: TextStyle(fontWeight: FontWeight.w700)),
+                          SizedBox(width: 8),
+                          Icon(Icons.arrow_forward_rounded, size: 18),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

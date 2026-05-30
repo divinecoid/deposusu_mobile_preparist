@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../../../core/network/api_client.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../models/order_model.dart';
@@ -6,7 +7,7 @@ import '../models/order_model.dart';
 abstract class OrderRemoteDataSource {
   Future<List<OrderModel>> getOrders({String status = 'onprocess'});
   Future<bool> startPreparation(int orderId);
-  Future<bool> finishPreparation(int orderId);
+  Future<bool> finishPreparation(int orderId, String photoIsiPath, String photoFinalPath);
 }
 
 class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
@@ -35,8 +36,21 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   }
 
   @override
-  Future<bool> finishPreparation(int orderId) async {
-    final response = await apiClient.post(AppConstants.finishOrder(orderId));
+  Future<bool> finishPreparation(int orderId, String photoIsiPath, String photoFinalPath) async {
+    final files = <http.MultipartFile>[];
+    
+    if (photoIsiPath.isNotEmpty) {
+      files.add(await http.MultipartFile.fromPath('photo_isi', photoIsiPath));
+    }
+    if (photoFinalPath.isNotEmpty) {
+      files.add(await http.MultipartFile.fromPath('photo_final', photoFinalPath));
+    }
+
+    final response = await apiClient.postMultipart(
+      AppConstants.finishOrder(orderId),
+      files: files,
+    );
+    
     return response.statusCode == 200;
   }
 }

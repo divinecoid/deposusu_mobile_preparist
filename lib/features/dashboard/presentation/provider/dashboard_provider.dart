@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/repositories/dashboard_repository.dart';
-import '../models/dashboard_stats_model.dart';
+import '../../data/models/dashboard_stats_model.dart';
 
 class DashboardProvider extends ChangeNotifier {
   final DashboardRepository repository;
@@ -21,7 +21,9 @@ class DashboardProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _stats = await repository.getPerformanceStats();
+      // Mocked data instead of hitting backend
+      await Future.delayed(const Duration(milliseconds: 500));
+      _stats = DashboardStatsModel(newOrders: 12, processingOrders: 5, priorityOrders: 2, completedTodayOrders: 38);
     } catch (e) {
       _error = e.toString();
     } finally {

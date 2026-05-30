@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String baseUrl = 'http://your-api-domain.com/api'; // Replace with actual domain
+  static const String baseUrl = 'http://192.168.1.50:8000/api';
 
   // Auth Endpoints
   static const String login = '/login';

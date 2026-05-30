@@ -18,7 +18,7 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   @override
-  Future<bool> finishPreparation(int orderId) async {
-    return await remoteDataSource.finishPreparation(orderId);
+  Future<bool> finishPreparation(int orderId, String photoIsiPath, String photoFinalPath) async {
+    return await remoteDataSource.finishPreparation(orderId, photoIsiPath, photoFinalPath);
   }
 }

@@ -21,49 +21,64 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Preparist Dashboard'),
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
-      ),
       body: Consumer<DashboardProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (provider.error != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Error: ${provider.error}'),
-                  ElevatedButton(
-                    onPressed: () => provider.fetchStats(),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final stats = provider.stats;
-          if (stats == null) {
-            return const Center(child: Text('No data available'));
-          }
-
           return RefreshIndicator(
             onRefresh: () => provider.fetchStats(),
-            child: GridView.count(
-              padding: const EdgeInsets.all(16),
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              children: [
-                _buildStatCard('Last Hour', stats.hour.toString(), Colors.orange),
-                _buildStatCard('Today', stats.day.toString(), Colors.blue),
-                _buildStatCard('This Week', stats.week.toString(), Colors.green),
-                _buildStatCard('This Month', stats.month.toString(), Colors.purple),
+            child: CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  expandedHeight: 140,
+                  floating: false,
+                  pinned: true,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  flexibleSpace: FlexibleSpaceBar(
+                    titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
+                    title: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Halo, Preparist! 👋',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
+                        Text(
+                          'Siap menyiapkan pesanan hari ini?',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Status Pesanan',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildContent(provider),
+                        const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           );
@@ -72,43 +87,179 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, Color color) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        padding: const EdgeInsets.all(16),
+  Widget _buildContent(DashboardProvider provider) {
+    if (provider.isLoading) {
+      return const SizedBox(
+        height: 200,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (provider.error != null) {
+      return Container(
+        height: 200,
+        width: double.infinity,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(
-            colors: [color.withOpacity(0.7), color],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: Colors.red.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.red.withOpacity(0.3)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+            const Icon(Icons.error_outline, color: Colors.red, size: 48),
+            const SizedBox(height: 12),
+            Text('Gagal memuat data', style: TextStyle(color: Colors.red[800])),
+            TextButton(
+              onPressed: () => provider.fetchStats(),
+              child: const Text('Coba Lagi', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final stats = provider.stats;
+    if (stats == null) {
+      return const Center(child: Text('Belum ada data', style: TextStyle(color: Colors.grey)));
+    }
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _ModernStatCard(
+                title: 'Pesanan Baru',
+                subtitle: 'Pesanan baru masuk',
+                value: stats.newOrders.toString(),
+                gradient: const [Color(0xFFF97316), Color(0xFFC2410C)], // Orange
+                icon: Icons.inbox_outlined,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.w900,
+            const SizedBox(width: 16),
+            Expanded(
+              child: _ModernStatCard(
+                title: 'Sedang Diproses',
+                subtitle: 'Pesanan sedang dikerjakan',
+                value: stats.processingOrders.toString(),
+                gradient: const [Color(0xFF3B82F6), Color(0xFF1D4ED8)], // Blue
+                icon: Icons.loop_outlined,
               ),
             ),
-            const Text(
-              'Packings',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _ModernStatCard(
+                title: 'Prioritas',
+                subtitle: 'Pesanan harus didahulukan',
+                value: stats.priorityOrders.toString(),
+                gradient: const [Color(0xFFEF4444), Color(0xFFB91C1C)], // Red
+                icon: Icons.warning_amber_rounded,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _ModernStatCard(
+                title: 'Selesai Hari Ini',
+                subtitle: 'Pesanan sudah selesai',
+                value: stats.completedTodayOrders.toString(),
+                gradient: const [Color(0xFF10B981), Color(0xFF047857)], // Green
+                icon: Icons.check_circle_outline,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ModernStatCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String value;
+  final List<Color> gradient;
+  final IconData icon;
+
+  const _ModernStatCard({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.gradient,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: gradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: gradient[1].withOpacity(0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -15,
+              bottom: -15,
+              child: Icon(
+                icon,
+                size: 80,
+                color: Colors.white.withOpacity(0.15),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, color: Colors.white, size: 28),
+                  const SizedBox(height: 16),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
