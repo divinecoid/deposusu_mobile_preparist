@@ -75,18 +75,18 @@ class OrderModel {
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     return OrderModel(
-      id: json['id'],
-      orderNumber: json['order_number'],
-      customerName: json['customer_name'],
-      status: json['status'],
-      items: (json['items'] as List).map((i) => OrderItemModel.fromJson(i)).toList(),
-      totalAmount: (json['total_amount'] as num).toDouble(),
-      createdAt: DateTime.parse(json['created_at']),
-      orderSource: json['order_source'] ?? 'Kasir',
-      assignedTo: json['assigned_to'],
+      id: _parseInt(json['id']),
+      orderNumber: json['order_number']?.toString() ?? '',
+      customerName: json['customer_name']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      items: (json['items'] as List?)?.map((i) => OrderItemModel.fromJson(i)).toList() ?? [],
+      totalAmount: _parseDouble(json['total_amount']),
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'].toString()) : DateTime.now(),
+      orderSource: json['order_source']?.toString() ?? 'Kasir',
+      assignedTo: json['assigned_to']?.toString(),
       editLogs: [],
-      pickupTime: json['pickup_time'] != null ? DateTime.parse(json['pickup_time']) : DateTime.now().add(const Duration(minutes: 30)),
-      deliveryType: json['delivery_type'] ?? 'regular',
+      pickupTime: json['pickup_time'] != null ? DateTime.parse(json['pickup_time'].toString()) : DateTime.now().add(const Duration(minutes: 30)),
+      deliveryType: json['delivery_type']?.toString() ?? 'regular',
     );
   }
 }
@@ -132,10 +132,26 @@ class OrderItemModel {
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     return OrderItemModel(
-      id: json['id'],
-      productName: json['product']['name'],
-      quantity: json['quantity'],
-      subtotal: (json['subtotal'] as num).toDouble(),
+      id: _parseInt(json['id']),
+      productName: json['product'] != null ? (json['product']['name']?.toString() ?? 'Produk') : 'Produk',
+      quantity: _parseInt(json['quantity']),
+      subtotal: _parseDouble(json['subtotal']),
     );
   }
+}
+
+int _parseInt(dynamic value) {
+  if (value == null) return 0;
+  if (value is int) return value;
+  if (value is double) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
+}
+
+double _parseDouble(dynamic value) {
+  if (value == null) return 0.0;
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? 0.0;
+  return 0.0;
 }
