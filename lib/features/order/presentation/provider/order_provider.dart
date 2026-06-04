@@ -21,56 +21,7 @@ class OrderProvider extends ChangeNotifier {
   bool _initialized = false;
 
   void _initMockData() {
-    if (_initialized) return;
-    _initialized = true;
-    _onProcessOrders = [
-      OrderModel(
-        id: 1,
-        orderNumber: 'TRX-101',
-        customerName: 'Ahmad Pelanggan',
-        status: 'onprocess',
-        totalAmount: 150000,
-        createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
-        pickupTime: DateTime.now().add(const Duration(minutes: 15)), // Pickup 15 mins
-        orderSource: 'WhatsApp',
-        deliveryType: 'instant',
-        items: [
-          OrderItemModel(id: 1, productName: 'Susu Kambing Botol', quantity: 2, subtotal: 50000),
-          OrderItemModel(id: 2, productName: 'Susu Sapi Murni', quantity: 1, subtotal: 100000),
-        ],
-      ),
-      OrderModel(
-        id: 3,
-        orderNumber: 'TRX-103',
-        customerName: 'Budi Kusuma',
-        status: 'onprocess',
-        totalAmount: 75000,
-        createdAt: DateTime.now().subtract(const Duration(minutes: 10)), // Created later
-        pickupTime: DateTime.now().add(const Duration(minutes: 5)), // BUT PICKUP IS SOONER!
-        orderSource: 'ShopeeFood',
-        deliveryType: 'regular',
-        items: [
-          OrderItemModel(id: 4, productName: 'Kefir Susu Sapi', quantity: 3, subtotal: 75000),
-        ],
-      ),
-    ];
-    _onPreparationOrders = [
-      OrderModel(
-        id: 2,
-        orderNumber: 'TRX-102',
-        customerName: 'Siti Pembeli',
-        status: 'onpreparation',
-        totalAmount: 200000,
-        createdAt: DateTime.now().subtract(const Duration(minutes: 60)),
-        pickupTime: DateTime.now().add(const Duration(minutes: 40)),
-        orderSource: 'GoFood',
-        assignedTo: 'Andi',
-        items: [
-          OrderItemModel(id: 3, productName: 'Yogurt Strawberry', quantity: 4, subtotal: 200000),
-        ],
-      ),
-    ];
-    _historyOrders = [];
+    // Mock data disabled to use actual data only
   }
 
   Future<void> fetchOrders({String status = 'onprocess'}) async {
@@ -95,19 +46,9 @@ class OrderProvider extends ChangeNotifier {
         _orders = [];
       }
     } catch (e) {
-      print('API Error, falling back to mock data: $e');
-      _initMockData();
-      if (status == 'onprocess') {
-        _onProcessOrders.sort(_sortScore);
-        _orders = List.from(_onProcessOrders);
-      } else if (status == 'onpreparation') {
-        _onPreparationOrders.sort(_sortScore);
-        _orders = List.from(_onPreparationOrders);
-      } else if (status == 'ready') {
-        _orders = List.from(_historyOrders);
-      } else {
-        _orders = [];
-      }
+      print('API Error: $e');
+      _error = e.toString();
+      _orders = [];
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -134,7 +75,6 @@ class OrderProvider extends ChangeNotifier {
 
     try {
       await repository.startPreparation(id);
-      // update local state langsung tanpa fetchOrders agar tidak double loading
       final idx = _onProcessOrders.indexWhere((o) => o.id == id);
       if (idx != -1) {
         final order = _onProcessOrders.removeAt(idx);
@@ -144,31 +84,9 @@ class OrderProvider extends ChangeNotifier {
       _orders = List.from(_onProcessOrders);
       return true;
     } catch (e) {
-      print('API Error startOrder, using mock logic: $e');
-      _initMockData();
-      final idx = _onProcessOrders.indexWhere((o) => o.id == id);
-      if (idx != -1) {
-        final order = _onProcessOrders.removeAt(idx);
-        _onPreparationOrders.add(order.copyWith(status: 'onpreparation', assignedTo: adminName));
-        _onPreparationOrders.sort((a, b) {
-          int scoreA = a.pickupTime.difference(DateTime.now()).inMinutes;
-          if (DateTime.now().difference(a.createdAt).inMinutes > 30) scoreA -= 45;
-
-          int itemsA = a.items.fold(0, (sum, item) => sum + item.quantity);
-          scoreA += itemsA;
-          if (a.deliveryType == 'regular') scoreA += 60;
-
-          int scoreB = b.pickupTime.difference(DateTime.now()).inMinutes;
-          if (DateTime.now().difference(b.createdAt).inMinutes > 30) scoreB -= 45;
-
-          int itemsB = b.items.fold(0, (sum, item) => sum + item.quantity);
-          scoreB += itemsB;
-          if (b.deliveryType == 'regular') scoreB += 60;
-
-          return scoreA.compareTo(scoreB);
-        });
-      }
-      return true;
+      print('API Error startOrder: $e');
+      _error = e.toString();
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -279,21 +197,9 @@ class OrderProvider extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      print('API Error finishPacking, using mock logic: $e');
-      await Future.delayed(const Duration(seconds: 1));
-
-      final orderIdx = _onPreparationOrders.indexWhere((o) => o.id == orderId);
-      if (orderIdx != -1) {
-        final order = _onPreparationOrders[orderIdx];
-        final updatedOrder = order.copyWith(
-          status: 'ready',
-          packingProofPhoto: photoIsiPath,
-          packingProofPhotoFinal: photoFinalPath,
-        );
-        _onPreparationOrders.removeWhere((o) => o.id == orderId);
-        _historyOrders.insert(0, updatedOrder);
-      }
-      return true;
+      print('API Error finishPacking: $e');
+      _error = e.toString();
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();

@@ -21,9 +21,7 @@ class DashboardProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Mocked data instead of hitting backend
-      await Future.delayed(const Duration(milliseconds: 500));
-      _stats = DashboardStatsModel(newOrders: 12, processingOrders: 5, priorityOrders: 2, completedTodayOrders: 38);
+      _stats = await repository.getPerformanceStats();
     } catch (e) {
       _error = e.toString();
     } finally {
