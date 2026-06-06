@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../provider/dashboard_provider.dart';
+import '../../../../core/providers/navigation_provider.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -73,7 +74,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        _buildContent(provider),
+                        _buildContent(provider, context),
                         const SizedBox(height: 40),
                       ],
                     ),
@@ -87,7 +88,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildContent(DashboardProvider provider) {
+  Widget _buildContent(DashboardProvider provider, BuildContext context) {
     if (provider.isLoading) {
       return const SizedBox(
         height: 200,
@@ -135,6 +136,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 value: stats.newOrders.toString(),
                 gradient: const [Color(0xFFF97316), Color(0xFFC2410C)], // Orange
                 icon: Icons.inbox_outlined,
+                onTap: () => context.read<NavigationProvider>().navigateToPacking(0),
               ),
             ),
             const SizedBox(width: 16),
@@ -145,6 +147,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 value: stats.processingOrders.toString(),
                 gradient: const [Color(0xFF3B82F6), Color(0xFF1D4ED8)], // Blue
                 icon: Icons.loop_outlined,
+                onTap: () => context.read<NavigationProvider>().navigateToPacking(1),
               ),
             ),
           ],
@@ -159,6 +162,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 value: stats.priorityOrders.toString(),
                 gradient: const [Color(0xFFEF4444), Color(0xFFB91C1C)], // Red
                 icon: Icons.warning_amber_rounded,
+                onTap: () => context.read<NavigationProvider>().navigateToPacking(0, filterPrioritas: true),
               ),
             ),
             const SizedBox(width: 16),
@@ -169,6 +173,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 value: stats.completedTodayOrders.toString(),
                 gradient: const [Color(0xFF10B981), Color(0xFF047857)], // Green
                 icon: Icons.check_circle_outline,
+                onTap: () => context.read<NavigationProvider>().navigateToHistory(filterHariIni: true),
               ),
             ),
           ],
@@ -184,6 +189,7 @@ class _ModernStatCard extends StatelessWidget {
   final String value;
   final List<Color> gradient;
   final IconData icon;
+  final VoidCallback? onTap;
 
   const _ModernStatCard({
     required this.title,
@@ -191,6 +197,7 @@ class _ModernStatCard extends StatelessWidget {
     required this.value,
     required this.gradient,
     required this.icon,
+    this.onTap,
   });
 
   @override
@@ -211,57 +218,64 @@ class _ModernStatCard extends StatelessWidget {
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Stack(
-          children: [
-            Positioned(
-              right: -15,
-              bottom: -15,
-              child: Icon(
-                icon,
-                size: 80,
-                color: Colors.white.withOpacity(0.15),
-              ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: onTap,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Stack(
+              children: [
+                Positioned(
+                  right: -15,
+                  bottom: -15,
+                  child: Icon(
+                    icon,
+                    size: 80,
+                    color: Colors.white.withOpacity(0.15),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(icon, color: Colors.white, size: 28),
+                      const SizedBox(height: 16),
+                      Text(
+                        value,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(icon, color: Colors.white, size: 28),
-                  const SizedBox(height: 16),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 36,
-                      fontWeight: FontWeight.w900,
-                      height: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

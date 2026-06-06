@@ -16,7 +16,7 @@ class _HistoryPageState extends State<HistoryPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OrderProvider>().fetchOrders(status: 'ready');
+      context.read<OrderProvider>().fetchOrders(status: 'history');
     });
   }
 
@@ -58,7 +58,20 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
       body: Consumer<OrderProvider>(
         builder: (context, provider, child) {
-          final filteredOrders = provider.orders.where((o) => o.status == 'ready').toList();
+          final navProvider = context.watch<NavigationProvider>();
+          final filteredOrders = provider.orders.where((o) {
+            if (!(o.status == 'ondelivery' || o.status == 'delivered' || o.status == 'done')) return false;
+            
+            if (navProvider.filterHariIni) {
+               final today = DateTime.now();
+               // We filter by preparedAt or createdAt
+               final dateToUse = o.packedAt ?? o.createdAt;
+               if (dateToUse.year != today.year || dateToUse.month != today.month || dateToUse.day != today.day) {
+                 return false;
+               }
+            }
+            return true;
+          }).toList();
 
           if (filteredOrders.isEmpty) {
             return Center(
@@ -89,7 +102,7 @@ class _HistoryPageState extends State<HistoryPage> {
           }
 
           return RefreshIndicator(
-            onRefresh: () => provider.fetchOrders(status: 'ready'),
+            onRefresh: () => provider.fetchOrders(status: 'history'),
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: filteredOrders.length,
@@ -122,7 +135,7 @@ class _HistoryPageState extends State<HistoryPage> {
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Text(
-                              '🟢 SELESAI',
+                              '🟢 DISERAHKAN KE DRIVER',
                               style: TextStyle(
                                 color: Color(0xFF10B981),
                                 fontSize: 12,

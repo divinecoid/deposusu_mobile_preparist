@@ -17,10 +17,18 @@ import 'features/order/data/repositories/order_repository_impl.dart';
 import 'features/order/presentation/provider/order_provider.dart';
 import 'features/order/presentation/pages/packing_list_page.dart';
 import 'features/order/presentation/pages/history_page.dart';
+import 'package:flutter/services.dart';
+
+import 'core/providers/navigation_provider.dart';
 
 void main() {
-  // Initialize Core
-  final apiClient = ApiClient();
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]).then((_) {
+    // Initialize Core
+    final apiClient = ApiClient();
 
   // Initialize Dashboard
   final dashboardRemoteDataSource = DashboardRemoteDataSourceImpl(apiClient);
@@ -33,12 +41,14 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => DashboardProvider(dashboardRepository)),
         ChangeNotifierProvider(create: (_) => OrderProvider(orderRepository)),
       ],
       child: const MyApp(),
     ),
   );
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -73,8 +83,6 @@ class MainNavigationPage extends StatefulWidget {
 }
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
-  int _selectedIndex = 0;
-
   final List<Widget> _pages = [
     const DashboardPage(),
     const PackingListPage(),
@@ -83,10 +91,12 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final navProvider = context.watch<NavigationProvider>();
+
     return Scaffold(
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
-        child: _pages[_selectedIndex],
+        child: _pages[navProvider.bottomNavIndex],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -101,8 +111,8 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           child: BottomNavigationBar(
-            currentIndex: _selectedIndex,
-            onTap: (index) => setState(() => _selectedIndex = index),
+            currentIndex: navProvider.bottomNavIndex,
+            onTap: (index) => context.read<NavigationProvider>().setBottomNavIndex(index),
             backgroundColor: Colors.white,
             selectedItemColor: const Color(0xFF1976D2),
             unselectedItemColor: Colors.grey[400],

@@ -9,6 +9,7 @@ class OrderProvider extends ChangeNotifier {
 
   List<OrderModel> _onProcessOrders = [];
   List<OrderModel> _onPreparationOrders = [];
+  List<OrderModel> _preparedOrders = [];
   List<OrderModel> _historyOrders = [];
   List<OrderModel> _orders = [];
   bool _isLoading = false;
@@ -18,11 +19,7 @@ class OrderProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  bool _initialized = false;
 
-  void _initMockData() {
-    // Mock data disabled to use actual data only
-  }
 
   Future<void> fetchOrders({String status = 'onprocess'}) async {
     _isLoading = true;
@@ -39,7 +36,11 @@ class OrderProvider extends ChangeNotifier {
         _onPreparationOrders = apiOrders;
         _onPreparationOrders.sort(_sortScore);
         _orders = List.from(_onPreparationOrders);
-      } else if (status == 'ready') {
+      } else if (status == 'prepared') {
+        _preparedOrders = apiOrders;
+        _preparedOrders.sort(_sortScore);
+        _orders = List.from(_preparedOrders);
+      } else if (status == 'history') {
         _historyOrders = apiOrders;
         _orders = List.from(_historyOrders);
       } else {
@@ -48,6 +49,14 @@ class OrderProvider extends ChangeNotifier {
     } catch (e) {
       print('API Error: $e');
       _error = e.toString();
+      // Reset the relevant cache so counter and list stay in sync
+      if (status == 'onprocess') {
+        _onProcessOrders = [];
+      } else if (status == 'onpreparation') {
+        _onPreparationOrders = [];
+      } else if (status == 'prepared') {
+        _preparedOrders = [];
+      }
       _orders = [];
     } finally {
       _isLoading = false;
@@ -56,17 +65,8 @@ class OrderProvider extends ChangeNotifier {
   }
 
   int _sortScore(OrderModel a, OrderModel b) {
-    int scoreA = a.pickupTime.difference(DateTime.now()).inMinutes;
-    if (DateTime.now().difference(a.createdAt).inMinutes > 30) scoreA -= 45;
-    scoreA += a.items.fold(0, (sum, item) => sum + item.quantity);
-    if (a.deliveryType == 'regular') scoreA += 60;
-
-    int scoreB = b.pickupTime.difference(DateTime.now()).inMinutes;
-    if (DateTime.now().difference(b.createdAt).inMinutes > 30) scoreB -= 45;
-    scoreB += b.items.fold(0, (sum, item) => sum + item.quantity);
-    if (b.deliveryType == 'regular') scoreB += 60;
-
-    return scoreA.compareTo(scoreB);
+    // FIFO tunggal: order yang lebih lama diproses lebih dulu
+    return a.createdAt.compareTo(b.createdAt);
   }
 
   Future<bool> startOrder(int id, String adminName) async {
@@ -74,7 +74,7 @@ class OrderProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await repository.startPreparation(id);
+      await repository.startPreparation(id, adminName);
       final idx = _onProcessOrders.indexWhere((o) => o.id == id);
       if (idx != -1) {
         final order = _onProcessOrders.removeAt(idx);
@@ -191,7 +191,12 @@ class OrderProvider extends ChangeNotifier {
     try {
       final success = await repository.finishPreparation(orderId, photoIsiPath, photoFinalPath);
       if (success) {
-        _onPreparationOrders.removeWhere((o) => o.id == orderId);
+        final idx = _onPreparationOrders.indexWhere((o) => o.id == orderId);
+        if (idx != -1) {
+          final order = _onPreparationOrders.removeAt(idx);
+          _preparedOrders.add(order.copyWith(status: 'prepared'));
+          _preparedOrders.sort(_sortScore);
+        }
         _orders = List.from(_onPreparationOrders);
         return true;
       }

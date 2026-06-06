@@ -13,8 +13,8 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   @override
-  Future<bool> startPreparation(int orderId) async {
-    return await remoteDataSource.startPreparation(orderId);
+  Future<bool> startPreparation(int orderId, String adminName) async {
+    return await remoteDataSource.startPreparation(orderId, adminName);
   }
 
   @override

@@ -6,7 +6,7 @@ import '../models/order_model.dart';
 
 abstract class OrderRemoteDataSource {
   Future<List<OrderModel>> getOrders({String status = 'onprocess'});
-  Future<bool> startPreparation(int orderId);
+  Future<bool> startPreparation(int orderId, String adminName);
   Future<bool> finishPreparation(int orderId, String photoIsiPath, String photoFinalPath);
 }
 
@@ -22,16 +22,19 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
       if (decoded['success'] == true) {
-        final List data = decoded['data']['data'];
+        final List data = decoded['data']['data'] ?? decoded['data'];
         return data.map((item) => OrderModel.fromJson(item)).toList();
       }
     }
-    throw Exception('Failed to load orders');
+    throw Exception('Failed to load orders: ${response.statusCode} - ${response.body}');
   }
 
   @override
-  Future<bool> startPreparation(int orderId) async {
-    final response = await apiClient.post(AppConstants.startOrder(orderId));
+  Future<bool> startPreparation(int orderId, String adminName) async {
+    final response = await apiClient.post(
+      AppConstants.startOrder(orderId),
+      body: {'assigned_to': adminName},
+    );
     return response.statusCode == 200;
   }
 

@@ -659,10 +659,14 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          order.orderNumber,
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.primary),
+                        Flexible(
+                          child: Text(
+                            order.orderNumber,
+                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.primary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
@@ -681,7 +685,7 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
                       children: [
                         const Icon(Icons.person_rounded, size: 16, color: Colors.grey),
                         const SizedBox(width: 8),
-                        Text(order.customerName, style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w600)),
+                        Flexible(child: Text(order.customerName, style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -689,7 +693,7 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
                       children: [
                         const Icon(Icons.storefront_rounded, size: 16, color: Colors.grey),
                         const SizedBox(width: 8),
-                        Text(order.orderSource, style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w600)),
+                        Flexible(child: Text(order.orderSource, style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                       ],
                     ),
                     if (order.assignedTo != null) ...[
@@ -698,7 +702,7 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
                         children: [
                           const Icon(Icons.assignment_ind_rounded, size: 16, color: Color(0xFFD97706)),
                           const SizedBox(width: 8),
-                          Text('Assigned to: ${order.assignedTo}', style: const TextStyle(fontSize: 14, color: Color(0xFFD97706), fontWeight: FontWeight.w700)),
+                          Flexible(child: Text('Assigned to: ${order.assignedTo}', style: const TextStyle(fontSize: 14, color: Color(0xFFD97706), fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis)),
                         ],
                       ),
                     ],

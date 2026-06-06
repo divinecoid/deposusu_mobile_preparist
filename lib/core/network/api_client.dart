@@ -37,7 +37,7 @@ class ApiClient {
           'email': 'preparist@deposusu.com',
           'password': 'password123',
         }),
-      ).timeout(const Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -64,7 +64,7 @@ class ApiClient {
   Future<http.Response> get(String endpoint, {Map<String, String>? queryParams}) async {
     await ensureAuthenticated();
     final uri = Uri.parse('${AppConstants.baseUrl}$endpoint').replace(queryParameters: queryParams);
-    return await _client.get(uri, headers: _headers).timeout(const Duration(seconds: 3));
+    return await _client.get(uri, headers: _headers).timeout(const Duration(seconds: 15));
   }
 
   Future<http.Response> post(String endpoint, {Map<String, dynamic>? body}) async {
@@ -76,7 +76,7 @@ class ApiClient {
       uri,
       headers: _headers,
       body: body != null ? jsonEncode(body) : null,
-    ).timeout(const Duration(seconds: 3));
+    ).timeout(const Duration(seconds: 15));
   }
 
   Future<http.StreamedResponse> postMultipart(String endpoint, {Map<String, String>? fields, List<http.MultipartFile>? files}) async {
@@ -92,6 +92,6 @@ class ApiClient {
     if (fields != null) request.fields.addAll(fields);
     if (files != null) request.files.addAll(files);
 
-    return await _client.send(request).timeout(const Duration(seconds: 5));
+    return await _client.send(request).timeout(const Duration(seconds: 15));
   }
 }
