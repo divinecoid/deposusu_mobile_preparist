@@ -20,6 +20,8 @@ import 'features/order/presentation/pages/history_page.dart';
 import 'package:flutter/services.dart';
 
 import 'core/providers/navigation_provider.dart';
+import 'core/providers/auth_provider.dart';
+import 'features/profile/presentation/pages/profile_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +44,7 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider(apiClient)),
         ChangeNotifierProvider(create: (_) => DashboardProvider(dashboardRepository)),
         ChangeNotifierProvider(create: (_) => OrderProvider(orderRepository)),
       ],
@@ -87,6 +90,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
     const DashboardPage(),
     const PackingListPage(),
     const HistoryPage(),
+    const ProfilePage(),
   ];
 
   @override
@@ -154,6 +158,17 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                   child: Icon(Icons.history_rounded, size: 28),
                 ),
                 label: 'Riwayat',
+              ),
+              BottomNavigationBarItem(
+                icon: Padding(
+                  padding: EdgeInsets.only(bottom: 4.0),
+                  child: Icon(Icons.person_outline),
+                ),
+                activeIcon: Padding(
+                  padding: EdgeInsets.only(bottom: 4.0),
+                  child: Icon(Icons.person, size: 28),
+                ),
+                label: 'Profil',
               ),
             ],
           ),
