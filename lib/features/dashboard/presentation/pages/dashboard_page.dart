@@ -157,12 +157,12 @@ class _DashboardPageState extends State<DashboardPage> {
           children: [
             Expanded(
               child: _ModernStatCard(
-                title: 'Prioritas',
-                subtitle: 'Pesanan harus didahulukan',
-                value: stats.priorityOrders.toString(),
-                gradient: const [Color(0xFFEF4444), Color(0xFFB91C1C)], // Red
-                icon: Icons.warning_amber_rounded,
-                onTap: () => context.read<NavigationProvider>().navigateToPacking(0, filterPrioritas: true),
+                title: 'Menunggu Driver',
+                subtitle: 'Pesanan siap di-pickup',
+                value: stats.waitingDriverOrders.toString(),
+                gradient: const [Color(0xFFFBBF24), Color(0xFFD97706)], // Yellow
+                icon: Icons.delivery_dining_outlined,
+                onTap: () => context.read<NavigationProvider>().navigateToPacking(2),
               ),
             ),
             const SizedBox(width: 16),

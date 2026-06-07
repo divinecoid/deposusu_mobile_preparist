@@ -1,13 +1,13 @@
 class DashboardStatsModel {
   final int newOrders;
   final int processingOrders;
-  final int priorityOrders;
+  final int waitingDriverOrders;
   final int completedTodayOrders;
 
   DashboardStatsModel({
     required this.newOrders,
     required this.processingOrders,
-    required this.priorityOrders,
+    required this.waitingDriverOrders,
     required this.completedTodayOrders,
   });
 
@@ -15,7 +15,7 @@ class DashboardStatsModel {
     return DashboardStatsModel(
       newOrders: json['newOrders'] ?? 0,
       processingOrders: json['processingOrders'] ?? 0,
-      priorityOrders: json['priorityOrders'] ?? 0,
+      waitingDriverOrders: json['waitingDriverOrders'] ?? 0,
       completedTodayOrders: json['completedTodayOrders'] ?? 0,
     );
   }
@@ -24,7 +24,7 @@ class DashboardStatsModel {
     return {
       'newOrders': newOrders,
       'processingOrders': processingOrders,
-      'priorityOrders': priorityOrders,
+      'waitingDriverOrders': waitingDriverOrders,
       'completedTodayOrders': completedTodayOrders,
     };
   }
