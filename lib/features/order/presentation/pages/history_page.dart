@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'dart:io';
 import '../provider/order_provider.dart';
 import '../../data/models/order_model.dart';
+import '../../../../core/providers/navigation_provider.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
