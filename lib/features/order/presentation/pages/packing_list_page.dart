@@ -216,6 +216,36 @@ class _PackingListPageState extends State<PackingListPage> with SingleTickerProv
     }
 
     final file = File(pickedFile.path);
+    
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Packing'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Is this photo correct?'),
+            const SizedBox(height: 16),
+            Image.file(file, height: 200, fit: BoxFit.cover),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Retake / Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+            child: const Text('Confirm Finish'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     final success = await context.read<OrderProvider>().finishOrder(id, photoFinal: file);
     
     if (!mounted) return;
