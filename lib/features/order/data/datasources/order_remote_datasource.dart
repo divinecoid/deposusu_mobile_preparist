@@ -6,6 +6,7 @@ import '../models/order_model.dart';
 abstract class OrderRemoteDataSource {
   Future<List<OrderModel>> getOrders({String status = 'onprocess'});
   Future<bool> startPreparation(int orderId);
+  Future<bool> cancelPreparation(int orderId);
   Future<bool> finishPreparation(int orderId);
 }
 
@@ -31,6 +32,12 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   @override
   Future<bool> startPreparation(int orderId) async {
     final response = await apiClient.post(AppConstants.startOrder(orderId));
+    return response.statusCode == 200;
+  }
+
+  @override
+  Future<bool> cancelPreparation(int orderId) async {
+    final response = await apiClient.post(AppConstants.cancelOrder(orderId));
     return response.statusCode == 200;
   }
 

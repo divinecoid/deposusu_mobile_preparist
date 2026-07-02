@@ -18,6 +18,11 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   @override
+  Future<bool> cancelPreparation(int orderId) async {
+    return await remoteDataSource.cancelPreparation(orderId);
+  }
+
+  @override
   Future<bool> finishPreparation(int orderId) async {
     return await remoteDataSource.finishPreparation(orderId);
   }

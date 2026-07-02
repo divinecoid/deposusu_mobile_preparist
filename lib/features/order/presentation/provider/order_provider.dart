@@ -42,6 +42,18 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> cancelOrder(int id) async {
+    try {
+      final success = await repository.cancelPreparation(id);
+      if (success) {
+        await fetchOrders(status: 'onpreparation'); // Refresh list
+      }
+      return success;
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<bool> finishOrder(int id) async {
     try {
       final success = await repository.finishPreparation(id);

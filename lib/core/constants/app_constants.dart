@@ -11,5 +11,6 @@ class AppConstants {
   static const String orders = '/preparist/orders';
 
   static String startOrder(int id) => '/preparist/orders/$id/start';
+  static String cancelOrder(int id) => '/preparist/orders/$id/cancel';
   static String finishOrder(int id) => '/preparist/orders/$id/finish';
 }

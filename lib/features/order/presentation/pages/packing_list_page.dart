@@ -152,10 +152,21 @@ class _PackingListPageState extends State<PackingListPage> {
         child: const Text('Start'),
       );
     } else if (order.status == 'onpreparation') {
-      return ElevatedButton(
-        onPressed: () => _handleFinish(order.id),
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-        child: const Text('Finish'),
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextButton(
+            onPressed: () => _handleCancel(order.id),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Cancel'),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () => _handleFinish(order.id),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+            child: const Text('Finish'),
+          ),
+        ],
       );
     }
     return const SizedBox.shrink();
@@ -174,6 +185,14 @@ class _PackingListPageState extends State<PackingListPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(success ? 'Order finished' : 'Failed to finish order')),
+    );
+  }
+
+  Future<void> _handleCancel(int id) async {
+    final success = await context.read<OrderProvider>().cancelOrder(id);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(success ? 'Preparation canceled' : 'Failed to cancel preparation')),
     );
   }
 }
