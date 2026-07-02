@@ -24,7 +24,7 @@ class OrderModel {
       customerName: json['customer_name'],
       status: json['status'],
       items: (json['items'] as List).map((i) => OrderItemModel.fromJson(i)).toList(),
-      totalAmount: (json['total_amount'] as num).toDouble(),
+      totalAmount: double.parse(json['total_amount'].toString()),
       createdAt: DateTime.parse(json['created_at']),
     );
   }
@@ -47,8 +47,8 @@ class OrderItemModel {
     return OrderItemModel(
       id: json['id'],
       productName: json['product']['name'],
-      quantity: json['quantity'],
-      subtotal: (json['subtotal'] as num).toDouble(),
+      quantity: int.parse(json['quantity'].toString()),
+      subtotal: double.parse(json['subtotal'].toString()),
     );
   }
 }

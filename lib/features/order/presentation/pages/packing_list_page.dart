@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../provider/order_provider.dart';
@@ -12,6 +13,7 @@ class PackingListPage extends StatefulWidget {
 
 class _PackingListPageState extends State<PackingListPage> {
   String _selectedStatus = 'onprocess';
+  Timer? _timer;
 
   @override
   void initState() {
@@ -19,6 +21,17 @@ class _PackingListPageState extends State<PackingListPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<OrderProvider>().fetchOrders(status: _selectedStatus);
     });
+    
+    // Auto-refresh every 10 seconds so new orders appear automatically
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) {
+      context.read<OrderProvider>().fetchOrders(status: _selectedStatus);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -42,30 +55,51 @@ class _PackingListPageState extends State<PackingListPage> {
               }
             },
           ),
-          const SizedBox(width: 16),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              context.read<OrderProvider>().fetchOrders(status: _selectedStatus);
+            },
+            tooltip: 'Refresh',
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Consumer<OrderProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading) {
+          if (provider.isLoading && provider.orders.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (provider.orders.isEmpty) {
-            return const Center(child: Text('No orders found'));
+          if (provider.error != null) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text('Error: ${provider.error}', style: const TextStyle(color: Colors.red)),
+              ),
+            );
           }
 
           return RefreshIndicator(
             onRefresh: () => provider.fetchOrders(status: _selectedStatus),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: provider.orders.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final order = provider.orders[index];
-                return _buildOrderCard(order);
-              },
-            ),
+            child: provider.orders.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(height: MediaQuery.of(context).size.height * 0.4),
+                      const Center(child: Text('No orders found')),
+                    ],
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: provider.orders.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final order = provider.orders[index];
+                      return _buildOrderCard(order);
+                    },
+                  ),
           );
         },
       ),
