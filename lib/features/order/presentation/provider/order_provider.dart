@@ -62,7 +62,8 @@ class OrderProvider extends ChangeNotifier {
         await fetchOrders(); // Refresh list
       }
       return success;
-    } catch (e) {
+    } catch (e, stacktrace) {
+      print('Error in finishOrder: $e\n$stacktrace');
       return false;
     }
   }

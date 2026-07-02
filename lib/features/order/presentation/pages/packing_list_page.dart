@@ -205,7 +205,7 @@ class _PackingListPageState extends State<PackingListPage> with SingleTickerProv
 
   Future<void> _handleFinish(int id) async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+    final pickedFile = await picker.pickImage(source: ImageSource.camera, imageQuality: 50, maxWidth: 1024, maxHeight: 1024);
 
     if (pickedFile == null) {
       if (!mounted) return;

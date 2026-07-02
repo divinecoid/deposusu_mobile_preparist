@@ -48,6 +48,8 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
       AppConstants.finishOrder(orderId),
       files: photoFinal != null ? {'photo_final': photoFinal.path} : null,
     );
+    print('finishPreparation status: ${response.statusCode}');
+    print('finishPreparation body: ${response.body}');
     return response.statusCode == 200;
   }
 }
