@@ -128,20 +128,12 @@ class _PackingListPageState extends State<PackingListPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('${item.quantity}x ${item.productName}'),
-                          Text('\$${item.subtotal.toStringAsFixed(2)}'),
+                          Expanded(
+                            child: Text('${item.quantity}x ${item.productName}'),
+                          ),
                         ],
                       ),
                     )),
-                const Divider(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Total Amount:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text('\$${order.totalAmount.toStringAsFixed(2)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                  ],
-                ),
               ],
             ),
           ),
