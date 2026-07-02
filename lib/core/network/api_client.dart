@@ -54,4 +54,29 @@ class ApiClient {
     );
     return _handleResponse(response);
   }
+
+  Future<http.Response> postMultipart(String endpoint, {Map<String, String>? fields, Map<String, String>? files}) async {
+    final uri = Uri.parse('${AppConstants.baseUrl}$endpoint');
+    final request = http.MultipartRequest('POST', uri);
+
+    final headers = {
+      'Accept': 'application/json',
+      if (_token != null) 'Authorization': 'Bearer $_token',
+    };
+    request.headers.addAll(headers);
+
+    if (fields != null) {
+      request.fields.addAll(fields);
+    }
+
+    if (files != null) {
+      for (final entry in files.entries) {
+        request.files.add(await http.MultipartFile.fromPath(entry.key, entry.value));
+      }
+    }
+
+    final streamedResponse = await _client.send(request);
+    final response = await http.Response.fromStream(streamedResponse);
+    return _handleResponse(response);
+  }
 }

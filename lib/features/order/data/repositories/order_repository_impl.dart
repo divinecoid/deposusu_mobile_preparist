@@ -1,3 +1,4 @@
+import 'dart:io';
 import '../../domain/repositories/order_repository.dart';
 import '../datasources/order_remote_datasource.dart';
 import '../models/order_model.dart';
@@ -23,7 +24,7 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   @override
-  Future<bool> finishPreparation(int orderId) async {
-    return await remoteDataSource.finishPreparation(orderId);
+  Future<bool> finishPreparation(int orderId, {File? photoFinal}) async {
+    return await remoteDataSource.finishPreparation(orderId, photoFinal: photoFinal);
   }
 }

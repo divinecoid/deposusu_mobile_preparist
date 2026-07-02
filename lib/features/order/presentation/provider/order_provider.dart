@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../domain/repositories/order_repository.dart';
 import '../../data/models/order_model.dart';
@@ -54,9 +55,9 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> finishOrder(int id) async {
+  Future<bool> finishOrder(int id, {File? photoFinal}) async {
     try {
-      final success = await repository.finishPreparation(id);
+      final success = await repository.finishPreparation(id, photoFinal: photoFinal);
       if (success) {
         await fetchOrders(); // Refresh list
       }

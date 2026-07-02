@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../provider/order_provider.dart';
 import '../../data/models/order_model.dart';
 
@@ -14,15 +16,15 @@ class PackingListPage extends StatefulWidget {
 class _PackingListPageState extends State<PackingListPage> with SingleTickerProviderStateMixin {
   String _selectedStatus = 'onprocess';
   Timer? _timer;
-  late TabController _tabController;
+  TabController? _tabController;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        final newStatus = _tabController.index == 0 ? 'onprocess' : 'onpreparation';
+    _tabController!.addListener(() {
+      if (!_tabController!.indexIsChanging) {
+        final newStatus = _tabController!.index == 0 ? 'onprocess' : 'onpreparation';
         if (_selectedStatus != newStatus) {
           setState(() => _selectedStatus = newStatus);
           context.read<OrderProvider>().fetchOrders(status: _selectedStatus);
@@ -43,7 +45,7 @@ class _PackingListPageState extends State<PackingListPage> with SingleTickerProv
   @override
   void dispose() {
     _timer?.cancel();
-    _tabController.dispose();
+    _tabController?.dispose();
     super.dispose();
   }
 
@@ -64,9 +66,9 @@ class _PackingListPageState extends State<PackingListPage> with SingleTickerProv
         ],
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
+          labelColor: Colors.blue,
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: Colors.blue,
           tabs: const [
             Tab(text: 'On Process'),
             Tab(text: 'On Preparation'),
@@ -75,6 +77,8 @@ class _PackingListPageState extends State<PackingListPage> with SingleTickerProv
       ),
       body: Consumer<OrderProvider>(
         builder: (context, provider, child) {
+          if (_tabController == null) return const SizedBox.shrink();
+
           if (provider.isLoading && provider.orders.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -200,7 +204,20 @@ class _PackingListPageState extends State<PackingListPage> with SingleTickerProv
   }
 
   Future<void> _handleFinish(int id) async {
-    final success = await context.read<OrderProvider>().finishOrder(id);
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+
+    if (pickedFile == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Photo is required to finish the order')),
+      );
+      return;
+    }
+
+    final file = File(pickedFile.path);
+    final success = await context.read<OrderProvider>().finishOrder(id, photoFinal: file);
+    
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(success ? 'Order finished' : 'Failed to finish order')),

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../models/order_model.dart';
@@ -7,7 +8,7 @@ abstract class OrderRemoteDataSource {
   Future<List<OrderModel>> getOrders({String status = 'onprocess'});
   Future<bool> startPreparation(int orderId);
   Future<bool> cancelPreparation(int orderId);
-  Future<bool> finishPreparation(int orderId);
+  Future<bool> finishPreparation(int orderId, {File? photoFinal});
 }
 
 class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
@@ -42,8 +43,11 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   }
 
   @override
-  Future<bool> finishPreparation(int orderId) async {
-    final response = await apiClient.post(AppConstants.finishOrder(orderId));
+  Future<bool> finishPreparation(int orderId, {File? photoFinal}) async {
+    final response = await apiClient.postMultipart(
+      AppConstants.finishOrder(orderId),
+      files: photoFinal != null ? {'photo_final': photoFinal.path} : null,
+    );
     return response.statusCode == 200;
   }
 }
