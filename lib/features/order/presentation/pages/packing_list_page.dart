@@ -110,6 +110,8 @@ class _PackingListPageState extends State<PackingListPage> {
     return Card(
       elevation: 2,
       child: ExpansionTile(
+        shape: const Border(),
+        collapsedShape: const Border(),
         title: Text(
           order.orderNumber,
           style: const TextStyle(fontWeight: FontWeight.bold),
