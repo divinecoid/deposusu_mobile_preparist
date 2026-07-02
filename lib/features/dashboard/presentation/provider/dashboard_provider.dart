@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/repositories/dashboard_repository.dart';
-import '../models/dashboard_stats_model.dart';
+import '../../data/models/dashboard_stats_model.dart';
 
 class DashboardProvider extends ChangeNotifier {
   final DashboardRepository repository;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../provider/order_provider.dart';
-import '../models/order_model.dart';
+import '../../data/models/order_model.dart';
 
 class PackingListPage extends StatefulWidget {
   const PackingListPage({super.key});

@@ -81,7 +81,7 @@ class _DashboardPageState extends State<DashboardPage> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           gradient: LinearGradient(
-            colors: [color.withOpacity(0.7), color],
+            colors: [color.withValues(alpha: 0.7), color],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),

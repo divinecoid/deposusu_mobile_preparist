@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/repositories/order_repository.dart';
-import '../models/order_model.dart';
+import '../../data/models/order_model.dart';
 
 class OrderProvider extends ChangeNotifier {
   final OrderRepository repository;

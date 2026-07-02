@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 // Core
 import 'core/network/api_client.dart';
+import 'core/routes/global_keys.dart';
 
 // Dashboard
 import 'features/dashboard/data/datasources/dashboard_remote_datasource.dart';
@@ -16,9 +19,23 @@ import 'features/order/data/repositories/order_repository_impl.dart';
 import 'features/order/presentation/provider/order_provider.dart';
 import 'features/order/presentation/pages/packing_list_page.dart';
 
-void main() {
+// Auth
+import 'features/auth/data/datasources/auth_remote_datasource.dart';
+import 'features/auth/data/repositories/auth_repository_impl.dart';
+import 'features/auth/presentation/provider/auth_provider.dart';
+import 'features/auth/presentation/pages/splash_page.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+
   // Initialize Core
   final apiClient = ApiClient();
+  await apiClient.initToken();
+
+  // Initialize Auth
+  final authRemoteDataSource = AuthRemoteDataSourceImpl(apiClient);
+  final authRepository = AuthRepositoryImpl(authRemoteDataSource, apiClient);
 
   // Initialize Dashboard
   final dashboardRemoteDataSource = DashboardRemoteDataSourceImpl(apiClient);
@@ -31,6 +48,8 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
+        Provider<ApiClient>.value(value: apiClient),
+        ChangeNotifierProvider(create: (_) => AuthProvider(authRepository)),
         ChangeNotifierProvider(create: (_) => DashboardProvider(dashboardRepository)),
         ChangeNotifierProvider(create: (_) => OrderProvider(orderRepository)),
       ],
@@ -46,11 +65,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Deposusu Preparist',
+      navigatorKey: GlobalKeys.navigatorKey,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
         useMaterial3: true,
       ),
-      home: const MainNavigationPage(),
+      home: const SplashPage(),
     );
   }
 }

@@ -1,5 +1,7 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class AppConstants {
-  static const String baseUrl = 'http://your-api-domain.com/api'; // Replace with actual domain
+  static String get baseUrl => dotenv.env['BASE_URL'] ?? 'http://10.0.2.2:8000/api'; // Replace with actual domain from .env
 
   // Auth Endpoints
   static const String login = '/login';
