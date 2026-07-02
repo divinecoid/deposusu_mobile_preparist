@@ -11,13 +11,25 @@ class PackingListPage extends StatefulWidget {
   State<PackingListPage> createState() => _PackingListPageState();
 }
 
-class _PackingListPageState extends State<PackingListPage> {
+class _PackingListPageState extends State<PackingListPage> with SingleTickerProviderStateMixin {
   String _selectedStatus = 'onprocess';
   Timer? _timer;
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        final newStatus = _tabController.index == 0 ? 'onprocess' : 'onpreparation';
+        if (_selectedStatus != newStatus) {
+          setState(() => _selectedStatus = newStatus);
+          context.read<OrderProvider>().fetchOrders(status: _selectedStatus);
+        }
+      }
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<OrderProvider>().fetchOrders(status: _selectedStatus);
     });
@@ -31,6 +43,7 @@ class _PackingListPageState extends State<PackingListPage> {
   @override
   void dispose() {
     _timer?.cancel();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -40,21 +53,6 @@ class _PackingListPageState extends State<PackingListPage> {
       appBar: AppBar(
         title: const Text('Packing List'),
         actions: [
-          DropdownButton<String>(
-            value: _selectedStatus,
-            dropdownColor: Colors.blueAccent,
-            style: const TextStyle(color: Colors.white),
-            items: const [
-              DropdownMenuItem(value: 'onprocess', child: Text('On Process')),
-              DropdownMenuItem(value: 'onpreparation', child: Text('On Preparation')),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _selectedStatus = value);
-                context.read<OrderProvider>().fetchOrders(status: value);
-              }
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -64,6 +62,16 @@ class _PackingListPageState extends State<PackingListPage> {
           ),
           const SizedBox(width: 8),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
+          tabs: const [
+            Tab(text: 'On Process'),
+            Tab(text: 'On Preparation'),
+          ],
+        ),
       ),
       body: Consumer<OrderProvider>(
         builder: (context, provider, child) {
@@ -80,29 +88,40 @@ class _PackingListPageState extends State<PackingListPage> {
             );
           }
 
-          return RefreshIndicator(
-            onRefresh: () => provider.fetchOrders(status: _selectedStatus),
-            child: provider.orders.isEmpty
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: [
-                      SizedBox(height: MediaQuery.of(context).size.height * 0.4),
-                      const Center(child: Text('No orders found')),
-                    ],
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: provider.orders.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final order = provider.orders[index];
-                      return _buildOrderCard(order);
-                    },
-                  ),
+          return TabBarView(
+            controller: _tabController,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _buildList(provider),
+              _buildList(provider),
+            ],
           );
         },
       ),
+    );
+  }
+
+  Widget _buildList(OrderProvider provider) {
+    return RefreshIndicator(
+      onRefresh: () => provider.fetchOrders(status: _selectedStatus),
+      child: provider.orders.isEmpty
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                const Center(child: Text('No orders found')),
+              ],
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.all(16),
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: provider.orders.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final order = provider.orders[index];
+                return _buildOrderCard(order);
+              },
+            ),
     );
   }
 
