@@ -1,6 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../network/api_client.dart';
-import 'package:dio/dio.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiClient _apiClient;
@@ -19,7 +20,9 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final response = await _apiClient.get('/user');
-      _user = response.data;
+      if (response.statusCode == 200) {
+        _user = jsonDecode(response.body);
+      }
     } catch (e) {
       debugPrint("Failed to fetch user: $e");
     } finally {
@@ -30,17 +33,26 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> updateBasicProfile(String name, String? photoPath) async {
     try {
-      FormData formData = FormData.fromMap({
-        'name': name,
-        if (photoPath != null)
-          'photo': await MultipartFile.fromFile(photoPath),
-      });
+      final fields = {'name': name};
+      final files = <http.MultipartFile>[];
+      if (photoPath != null && photoPath.isNotEmpty) {
+        files.add(await http.MultipartFile.fromPath('photo', photoPath));
+      }
 
-      final response = await _apiClient.post('/profile/update-basic', data: formData);
-      if (response.data['success'] == true) {
-        _user = response.data['user'];
-        notifyListeners();
-        return true;
+      final response = await _apiClient.postMultipart(
+        '/profile/update-basic',
+        fields: fields,
+        files: files,
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = await response.stream.bytesToString();
+        final decoded = jsonDecode(responseBody);
+        if (decoded['success'] == true) {
+          _user = decoded['user'];
+          notifyListeners();
+          return true;
+        }
       }
     } catch (e) {
       debugPrint("Update basic profile error: $e");
@@ -50,28 +62,40 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> requestOtp(String type, String newValue) async {
     try {
-      final response = await _apiClient.post('/profile/request-otp', data: {
-        'type': type,
-        'new_value': newValue,
-      });
-      return response.data['success'] == true;
+      final response = await _apiClient.post(
+        '/profile/request-otp',
+        body: {
+          'type': type,
+          'new_value': newValue,
+        },
+      );
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['success'] == true;
+      }
     } catch (e) {
       debugPrint("Request OTP error: $e");
-      return false;
     }
+    return false;
   }
 
   Future<bool> verifyAndUpdateSecureProfile(String type, String newValue, String otp) async {
     try {
-      final response = await _apiClient.post('/profile/verify-otp', data: {
-        'type': type,
-        'new_value': newValue,
-        'otp': otp,
-      });
-      if (response.data['success'] == true) {
-        _user = response.data['user'];
-        notifyListeners();
-        return true;
+      final response = await _apiClient.post(
+        '/profile/verify-otp',
+        body: {
+          'type': type,
+          'new_value': newValue,
+          'otp': otp,
+        },
+      );
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true) {
+          _user = decoded['user'];
+          notifyListeners();
+          return true;
+        }
       }
     } catch (e) {
       debugPrint("Verify OTP error: $e");
