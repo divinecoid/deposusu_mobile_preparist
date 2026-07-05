@@ -85,6 +85,8 @@ class OrderModel {
       orderSource: json['order_source']?.toString() ?? 'Kasir',
       assignedTo: json['assigned_to']?.toString() ?? (json['preparist'] != null ? json['preparist']['name']?.toString() : null),
       packerName: json['packer_name']?.toString() ?? (json['preparist'] != null ? json['preparist']['name']?.toString() : null),
+      packingProofPhoto: json['packing_photo_isi']?.toString(),
+      packingProofPhotoFinal: json['packing_photo_final']?.toString(),
       editLogs: [],
       pickupTime: json['pickup_time'] != null ? DateTime.parse(json['pickup_time'].toString()) : DateTime.now().add(const Duration(minutes: 30)),
       deliveryType: json['delivery_type']?.toString() ?? 'regular',

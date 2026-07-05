@@ -3,6 +3,8 @@ class AppConstants {
   // static const String baseUrl = 'http://deposusu.divineproject.my.id/api';
   // static const String baseUrl = 'https://deposusu.divineproject.my.id/api';
 
+  static String get storageUrl => baseUrl.replaceAll('/api', '') + '/storage/';
+
   // Auth Endpoints
   static const String login = '/login';
 

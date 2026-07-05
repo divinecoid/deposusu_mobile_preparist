@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../provider/order_provider.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/utils/watermark_util.dart';
+import '../../../../core/constants/app_constants.dart';
 
 class PackingDetailPage extends StatefulWidget {
   final int orderId;
@@ -82,7 +83,7 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
     }
   }
 
-  void _showFullScreenImage(File imageFile) {
+  void _showFullScreenImage({File? file, String? url}) {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (ctx) => Scaffold(
         backgroundColor: Colors.black,
@@ -96,7 +97,12 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
             panEnabled: true,
             minScale: 0.5,
             maxScale: 4,
-            child: Image.file(imageFile),
+            child: file != null 
+                ? Image.file(file) 
+                : Image.network(
+                    url ?? '',
+                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white, size: 50),
+                  ),
           ),
         ),
       ),
