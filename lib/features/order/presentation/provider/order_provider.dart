@@ -30,15 +30,12 @@ class OrderProvider extends ChangeNotifier {
       final apiOrders = await repository.getOrders(status);
       if (status == 'onprocess') {
         _onProcessOrders = apiOrders;
-        _onProcessOrders.sort(_sortScore);
         _orders = List.from(_onProcessOrders);
       } else if (status == 'onpreparation') {
         _onPreparationOrders = apiOrders;
-        _onPreparationOrders.sort(_sortScore);
         _orders = List.from(_onPreparationOrders);
       } else if (status == 'prepared') {
         _preparedOrders = apiOrders;
-        _preparedOrders.sort(_sortScore);
         _orders = List.from(_preparedOrders);
       } else if (status == 'history') {
         _historyOrders = apiOrders;
@@ -64,11 +61,6 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
-  int _sortScore(OrderModel a, OrderModel b) {
-    // FIFO tunggal: order yang lebih lama diproses lebih dulu
-    return a.createdAt.compareTo(b.createdAt);
-  }
-
   Future<bool> startOrder(int id, String adminName) async {
     _isLoading = true;
     notifyListeners();
@@ -79,7 +71,6 @@ class OrderProvider extends ChangeNotifier {
       if (idx != -1) {
         final order = _onProcessOrders.removeAt(idx);
         _onPreparationOrders.add(order.copyWith(status: 'onpreparation', assignedTo: adminName));
-        _onPreparationOrders.sort(_sortScore);
       }
       _orders = List.from(_onProcessOrders);
       return true;
@@ -195,7 +186,6 @@ class OrderProvider extends ChangeNotifier {
         if (idx != -1) {
           final order = _onPreparationOrders.removeAt(idx);
           _preparedOrders.add(order.copyWith(status: 'prepared'));
-          _preparedOrders.sort(_sortScore);
         }
         _orders = List.from(_onPreparationOrders);
         return true;

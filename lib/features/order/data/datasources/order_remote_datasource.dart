@@ -17,7 +17,10 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
 
   @override
   Future<List<OrderModel>> getOrders({String status = 'onprocess'}) async {
-    final response = await apiClient.get(AppConstants.orders, queryParams: {'status': status});
+    final response = await apiClient.get(AppConstants.orders, queryParams: {
+      'status': status,
+      'sort': 'desc',
+    });
 
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
