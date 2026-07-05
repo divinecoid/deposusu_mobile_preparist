@@ -22,6 +22,8 @@ import 'package:flutter/services.dart';
 import 'core/providers/navigation_provider.dart';
 import 'core/providers/auth_provider.dart';
 import 'features/profile/presentation/pages/profile_page.dart';
+import 'core/routes/global_keys.dart';
+import 'features/auth/presentation/pages/login_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,7 +46,7 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
-        ChangeNotifierProvider(create: (_) => AuthProvider(apiClient)),
+        ChangeNotifierProvider(create: (_) => AuthProvider(apiClient), lazy: false),
         ChangeNotifierProvider(create: (_) => DashboardProvider(dashboardRepository)),
         ChangeNotifierProvider(create: (_) => OrderProvider(orderRepository)),
       ],
@@ -61,6 +63,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Deposusu Preparist',
+      navigatorKey: GlobalKeys.navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -73,6 +76,10 @@ class MyApp extends StatelessWidget {
         textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
         scaffoldBackgroundColor: const Color(0xFFF8FAFC),
       ),
+      routes: {
+        '/login': (_) => const LoginPage(),
+        '/home': (_) => const MainNavigationPage(),
+      },
       home: const MainNavigationPage(),
     );
   }

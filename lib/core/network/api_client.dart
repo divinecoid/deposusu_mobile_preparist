@@ -1,18 +1,22 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../constants/app_constants.dart';
 
 class ApiClient {
   final http.Client _client;
   String? _token;
+  VoidCallback? onUnauthorized;
 
   ApiClient({http.Client? client}) : _client = client ?? http.Client();
 
   bool _isAuthenticating = false;
   Completer<void>? _authCompleter;
 
-  void setToken(String token) {
+  String? get token => _token;
+
+  void setToken(String? token) {
     _token = token;
   }
 
@@ -34,8 +38,8 @@ class ApiClient {
           'Accept': 'application/json',
         },
         body: jsonEncode({
-          'email': 'preparist@deposusu.com',
-          'password': 'password123',
+          'email': 'gudang@deposusu.com',
+          'password': 'password',
         }),
       ).timeout(const Duration(seconds: 15));
 
@@ -61,10 +65,19 @@ class ApiClient {
         if (_token != null) 'Authorization': 'Bearer $_token',
       };
 
+  void _handleResponse(String endpoint, int statusCode) {
+    if (statusCode == 401 && endpoint != '/login') {
+      _token = null;
+      onUnauthorized?.call();
+    }
+  }
+
   Future<http.Response> get(String endpoint, {Map<String, String>? queryParams}) async {
     await ensureAuthenticated();
     final uri = Uri.parse('${AppConstants.baseUrl}$endpoint').replace(queryParameters: queryParams);
-    return await _client.get(uri, headers: _headers).timeout(const Duration(seconds: 15));
+    final response = await _client.get(uri, headers: _headers).timeout(const Duration(seconds: 15));
+    _handleResponse(endpoint, response.statusCode);
+    return response;
   }
 
   Future<http.Response> post(String endpoint, {Map<String, dynamic>? body}) async {
@@ -72,11 +85,13 @@ class ApiClient {
       await ensureAuthenticated();
     }
     final uri = Uri.parse('${AppConstants.baseUrl}$endpoint');
-    return await _client.post(
+    final response = await _client.post(
       uri,
       headers: _headers,
       body: body != null ? jsonEncode(body) : null,
     ).timeout(const Duration(seconds: 15));
+    _handleResponse(endpoint, response.statusCode);
+    return response;
   }
 
   Future<http.StreamedResponse> postMultipart(String endpoint, {Map<String, String>? fields, List<http.MultipartFile>? files}) async {
@@ -92,6 +107,8 @@ class ApiClient {
     if (fields != null) request.fields.addAll(fields);
     if (files != null) request.files.addAll(files);
 
-    return await _client.send(request).timeout(const Duration(seconds: 15));
+    final response = await _client.send(request).timeout(const Duration(seconds: 15));
+    _handleResponse(endpoint, response.statusCode);
+    return response;
   }
 }

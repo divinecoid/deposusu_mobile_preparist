@@ -85,7 +85,7 @@ class ProfilePage extends StatelessWidget {
                             leading: const Icon(Icons.logout, color: Colors.red),
                             title: const Text('Keluar', style: TextStyle(color: Colors.red)),
                             onTap: () {
-                              // Handle logout
+                              context.read<AuthProvider>().logout();
                             },
                           ),
                         ],
