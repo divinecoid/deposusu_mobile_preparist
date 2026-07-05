@@ -185,63 +185,89 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
     final success = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (bottomSheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.verified_user_rounded, size: 64, color: Color(0xFF10B981)),
-                ),
-                const SizedBox(height: 24),
-                const Text('Tahap Final Check', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 16),
-                const Text(
-                  'Demi menjaga kualitas, mohon pastikan sekali lagi:\n\n'
-                  '1. Semua barang sudah masuk kardus/tas.\n'
-                  '2. Tidak ada barang yang tertinggal.\n'
-                  '3. Segel dan label resi sudah menempel kuat.',
-                  style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.5, fontWeight: FontWeight.w500),
-                  textAlign: TextAlign.left,
-                ),
-                const SizedBox(height: 40),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      // Finish order with both photos
-                      final ok = await provider.finishPacking(order.id, _photoIsiPaket!.path, _photoPaketFinal!.path);
-                      if (!bottomSheetContext.mounted) return;
-                      Navigator.pop(bottomSheetContext, ok); // close bottom sheet and return result
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
+        bool isLoading = false;
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.verified_user_rounded, size: 64, color: Color(0xFF10B981)),
                     ),
-                    child: const Text('✅ FINAL CHECK COMPLETE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                  ),
+                    const SizedBox(height: 24),
+                    const Text('Tahap Final Check', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Demi menjaga kualitas, mohon pastikan sekali lagi:\n\n'
+                      '1. Semua barang sudah masuk kardus/tas.\n'
+                      '2. Tidak ada barang yang tertinggal.\n'
+                      '3. Segel dan label resi sudah menempel kuat.',
+                      style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.5, fontWeight: FontWeight.w500),
+                      textAlign: TextAlign.left,
+                    ),
+                    const SizedBox(height: 40),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isLoading ? null : () async {
+                          setModalState(() {
+                            isLoading = true;
+                          });
+                          try {
+                            // Finish order with both photos
+                            final ok = await provider.finishPacking(order.id, _photoIsiPaket!.path, _photoPaketFinal!.path);
+                            if (!bottomSheetContext.mounted) return;
+                            Navigator.pop(bottomSheetContext, ok); // close bottom sheet and return result
+                          } catch (e) {
+                            if (!bottomSheetContext.mounted) return;
+                            setModalState(() {
+                              isLoading = false;
+                            });
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('✅ FINAL CHECK COMPLETE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: isLoading ? null : () => Navigator.pop(bottomSheetContext),
+                      child: const Text('Batal, saya mau cek ulang', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => Navigator.pop(bottomSheetContext),
-                  child: const Text('Batal, saya mau cek ulang', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
