@@ -5,6 +5,7 @@ import '../../data/models/order_model.dart';
 import 'packing_detail_page.dart';
 import '../../../../features/dashboard/presentation/provider/dashboard_provider.dart';
 import '../../../../core/providers/navigation_provider.dart';
+import '../../../../core/providers/auth_provider.dart';
 
 class PackingListPage extends StatefulWidget {
   const PackingListPage({super.key});
@@ -420,45 +421,14 @@ class _PremiumOrderCard extends StatelessWidget {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: () async {
-                          final adminName = await showDialog<String>(
-                            context: context,
-                            builder: (context) {
-                              final staffs = ['Andi', 'Budi', 'Citra', 'Deni', 'Eka', 'Fajar'];
-                              return AlertDialog(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                title: const Text('Siapa yang bertugas?', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
-                                content: Wrap(
-                                  spacing: 12,
-                                  runSpacing: 12,
-                                  alignment: WrapAlignment.center,
-                                  children: staffs.map((name) => ElevatedButton.icon(
-                                    icon: const Icon(Icons.person),
-                                    label: Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                    style: ElevatedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                    ),
-                                    onPressed: () => Navigator.pop(context, name),
-                                  )).toList(),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('Batal', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
+                        final authProvider = context.read<AuthProvider>();
+                        final userName = authProvider.user?['name'] ?? 'Staf Gudang';
 
-                        if (adminName == null || adminName.trim().isEmpty) return;
-
-                        if (!context.mounted) return;
-                        final success = await context.read<OrderProvider>().startOrder(order.id, adminName.trim());
+                        final success = await context.read<OrderProvider>().startOrder(order.id, userName);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(success ? 'Tugas Packing Diambil oleh ${adminName.trim()}!' : 'Gagal memproses'),
+                              content: Text(success ? 'Tugas Packing Diambil oleh $userName!' : 'Gagal memproses'),
                               backgroundColor: success ? const Color(0xFF10B981) : Colors.red,
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

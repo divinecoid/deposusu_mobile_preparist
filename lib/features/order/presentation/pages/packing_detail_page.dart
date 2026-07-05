@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../provider/order_provider.dart';
+import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/utils/watermark_util.dart';
 
 class PackingDetailPage extends StatefulWidget {
@@ -103,49 +104,18 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
   }
 
   void _handleStart(BuildContext context) async {
-    final adminName = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        final staffs = ['Andi', 'Budi', 'Citra', 'Deni', 'Eka', 'Fajar'];
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text('Siapa yang bertugas?', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
-          content: Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            alignment: WrapAlignment.center,
-            children: staffs.map((name) => ElevatedButton.icon(
-              icon: const Icon(Icons.person),
-              label: Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              onPressed: () => Navigator.pop(context, name),
-            )).toList(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Batal', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (adminName == null || adminName.trim().isEmpty) return;
-    if (!mounted) return;
+    final authProvider = context.read<AuthProvider>();
+    final userName = authProvider.user?['name'] ?? 'Staf Gudang';
 
     final provider = context.read<OrderProvider>();
-    final success = await provider.startOrder(widget.orderId, adminName.trim());
+    final success = await provider.startOrder(widget.orderId, userName);
     if (!mounted) return;
     
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Tugas Packing Diambil oleh ${adminName.trim()}!'),
-          backgroundColor: Color(0xFF10B981),
+          content: Text('Tugas Packing Diambil oleh $userName!'),
+          backgroundColor: const Color(0xFF10B981),
           behavior: SnackBarBehavior.floating,
         ),
       );
