@@ -1,0 +1,35 @@
+--- lib/features/order/presentation/pages/packing_list_page.dart
++++ lib/features/order/presentation/pages/packing_list_page.dart
+@@ -4,6 +4,7 @@
+ import '../../data/models/order_model.dart';
+ import 'packing_detail_page.dart';
++import '../../../../features/dashboard/presentation/provider/dashboard_provider.dart';
+ 
+ class PackingListPage extends StatefulWidget {
+   const PackingListPage({super.key});
+@@ -93,8 +94,20 @@
+   Widget build(BuildContext context) {
+     return Consumer<OrderProvider>(
+       builder: (context, provider, child) {
++        final dashboardProvider = context.watch<DashboardProvider>();
++        final dashboardStats = dashboardProvider.stats;
++        bool forceEmpty = false;
++
++        if (dashboardStats != null) {
++          if (widget.status == 'onprocess' && dashboardStats.newOrders == 0) {
++            forceEmpty = true;
++          } else if (widget.status == 'onpreparation' && dashboardStats.processingOrders == 0) {
++            forceEmpty = true;
++          }
++        }
++
+         if (provider.isLoading) {
+           return const Center(child: CircularProgressIndicator());
+         }
+ 
+         final filteredOrders = provider.orders.where((o) => o.status == widget.status).toList();
+ 
+-        if (filteredOrders.isEmpty) {
++        if (filteredOrders.isEmpty || forceEmpty) {
+           return Center(
+             child: Column(

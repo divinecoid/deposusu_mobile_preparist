@@ -1,31 +1,31 @@
 class DashboardStatsModel {
-  final int hour;
-  final int day;
-  final int week;
-  final int month;
+  final int newOrders;
+  final int processingOrders;
+  final int waitingDriverOrders;
+  final int completedTodayOrders;
 
   DashboardStatsModel({
-    required this.hour,
-    required this.day,
-    required this.week,
-    required this.month,
+    required this.newOrders,
+    required this.processingOrders,
+    required this.waitingDriverOrders,
+    required this.completedTodayOrders,
   });
 
   factory DashboardStatsModel.fromJson(Map<String, dynamic> json) {
     return DashboardStatsModel(
-      hour: json['hour'] ?? 0,
-      day: json['day'] ?? 0,
-      week: json['week'] ?? 0,
-      month: json['month'] ?? 0,
+      newOrders: json['newOrders'] ?? 0,
+      processingOrders: json['processingOrders'] ?? 0,
+      waitingDriverOrders: json['waitingDriverOrders'] ?? 0,
+      completedTodayOrders: json['completedTodayOrders'] ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'hour': hour,
-      'day': day,
-      'week': week,
-      'month': month,
+      'newOrders': newOrders,
+      'processingOrders': processingOrders,
+      'waitingDriverOrders': waitingDriverOrders,
+      'completedTodayOrders': completedTodayOrders,
     };
   }
 }

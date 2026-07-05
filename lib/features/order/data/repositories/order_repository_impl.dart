@@ -1,4 +1,3 @@
-import 'dart:io';
 import '../../domain/repositories/order_repository.dart';
 import '../datasources/order_remote_datasource.dart';
 import '../models/order_model.dart';
@@ -14,17 +13,12 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   @override
-  Future<bool> startPreparation(int orderId) async {
-    return await remoteDataSource.startPreparation(orderId);
+  Future<bool> startPreparation(int orderId, String adminName) async {
+    return await remoteDataSource.startPreparation(orderId, adminName);
   }
 
   @override
-  Future<bool> cancelPreparation(int orderId) async {
-    return await remoteDataSource.cancelPreparation(orderId);
-  }
-
-  @override
-  Future<bool> finishPreparation(int orderId, {File? photoFinal}) async {
-    return await remoteDataSource.finishPreparation(orderId, photoFinal: photoFinal);
+  Future<bool> finishPreparation(int orderId, String photoIsiPath, String photoFinalPath) async {
+    return await remoteDataSource.finishPreparation(orderId, photoIsiPath, photoFinalPath);
   }
 }

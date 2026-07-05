@@ -1,23 +1,58 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
-import '../routes/global_keys.dart';
-import '../../features/auth/presentation/pages/login_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 class ApiClient {
   final http.Client _client;
   String? _token;
 
   ApiClient({http.Client? client}) : _client = client ?? http.Client();
 
-  void setToken(String? token) {
+  bool _isAuthenticating = false;
+  Completer<void>? _authCompleter;
+
+  void setToken(String token) {
     _token = token;
   }
 
-  Future<void> initToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('auth_token');
+  Future<void> ensureAuthenticated() async {
+    if (_token != null) return;
+    if (_isAuthenticating) {
+      return _authCompleter?.future;
+    }
+
+    _isAuthenticating = true;
+    _authCompleter = Completer<void>();
+
+    try {
+      final uri = Uri.parse('${AppConstants.baseUrl}/login');
+      final response = await _client.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'email': 'preparist@deposusu.com',
+          'password': 'password123',
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          _token = data['token'];
+          print('Silent login successful for preparist: $_token');
+        }
+      }
+    } catch (e) {
+      print('Silent login failed: $e');
+    } finally {
+      _isAuthenticating = false;
+      _authCompleter?.complete();
+      _authCompleter = null;
+    }
   }
 
   Map<String, String> get _headers => {
@@ -26,57 +61,37 @@ class ApiClient {
         if (_token != null) 'Authorization': 'Bearer $_token',
       };
 
-  http.Response _handleResponse(http.Response response) {
-    if (response.statusCode == 401) {
-      final context = GlobalKeys.navigatorKey.currentContext;
-      if (context != null) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginPage()),
-          (route) => false,
-        );
-      }
-    }
-    return response;
-  }
-
   Future<http.Response> get(String endpoint, {Map<String, String>? queryParams}) async {
+    await ensureAuthenticated();
     final uri = Uri.parse('${AppConstants.baseUrl}$endpoint').replace(queryParameters: queryParams);
-    final response = await _client.get(uri, headers: _headers);
-    return _handleResponse(response);
+    return await _client.get(uri, headers: _headers).timeout(const Duration(seconds: 15));
   }
 
   Future<http.Response> post(String endpoint, {Map<String, dynamic>? body}) async {
+    if (endpoint != '/login') {
+      await ensureAuthenticated();
+    }
     final uri = Uri.parse('${AppConstants.baseUrl}$endpoint');
-    final response = await _client.post(
+    return await _client.post(
       uri,
       headers: _headers,
       body: body != null ? jsonEncode(body) : null,
-    );
-    return _handleResponse(response);
+    ).timeout(const Duration(seconds: 15));
   }
 
-  Future<http.Response> postMultipart(String endpoint, {Map<String, String>? fields, Map<String, String>? files}) async {
+  Future<http.StreamedResponse> postMultipart(String endpoint, {Map<String, String>? fields, List<http.MultipartFile>? files}) async {
+    await ensureAuthenticated();
     final uri = Uri.parse('${AppConstants.baseUrl}$endpoint');
     final request = http.MultipartRequest('POST', uri);
-
-    final headers = {
-      'Accept': 'application/json',
-      if (_token != null) 'Authorization': 'Bearer $_token',
-    };
-    request.headers.addAll(headers);
-
-    if (fields != null) {
-      request.fields.addAll(fields);
+    
+    if (_token != null) {
+      request.headers['Authorization'] = 'Bearer $_token';
     }
+    request.headers['Accept'] = 'application/json';
 
-    if (files != null) {
-      for (final entry in files.entries) {
-        request.files.add(await http.MultipartFile.fromPath(entry.key, entry.value));
-      }
-    }
+    if (fields != null) request.fields.addAll(fields);
+    if (files != null) request.files.addAll(files);
 
-    final streamedResponse = await _client.send(request);
-    final response = await http.Response.fromStream(streamedResponse);
-    return _handleResponse(response);
+    return await _client.send(request).timeout(const Duration(seconds: 15));
   }
 }

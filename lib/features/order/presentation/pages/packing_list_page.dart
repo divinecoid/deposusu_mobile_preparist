@@ -1,10 +1,10 @@
-import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
 import '../provider/order_provider.dart';
 import '../../data/models/order_model.dart';
+import 'packing_detail_page.dart';
+import '../../../../features/dashboard/presentation/provider/dashboard_provider.dart';
+import '../../../../core/providers/navigation_provider.dart';
 
 class PackingListPage extends StatefulWidget {
   const PackingListPage({super.key});
@@ -14,38 +14,32 @@ class PackingListPage extends StatefulWidget {
 }
 
 class _PackingListPageState extends State<PackingListPage> with SingleTickerProviderStateMixin {
-  String _selectedStatus = 'onprocess';
-  Timer? _timer;
-  TabController? _tabController;
+  late TabController _tabController;
+  late NavigationProvider _navProvider;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController!.addListener(() {
-      if (!_tabController!.indexIsChanging) {
-        final newStatus = _tabController!.index == 0 ? 'onprocess' : 'onpreparation';
-        if (_selectedStatus != newStatus) {
-          setState(() => _selectedStatus = newStatus);
-          context.read<OrderProvider>().fetchOrders(status: _selectedStatus);
-        }
-      }
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OrderProvider>().fetchOrders(status: _selectedStatus);
-    });
+    _navProvider = context.read<NavigationProvider>();
+    _tabController = TabController(
+      length: 3, 
+      vsync: this, 
+      initialIndex: _navProvider.packingTabIndex,
+    );
     
-    // Auto-refresh every 10 seconds so new orders appear automatically
-    _timer = Timer.periodic(const Duration(seconds: 10), (_) {
-      context.read<OrderProvider>().fetchOrders(status: _selectedStatus);
-    });
+    _navProvider.addListener(_onNavChanged);
+  }
+
+  void _onNavChanged() {
+    if (_tabController.index != _navProvider.packingTabIndex) {
+      _tabController.animateTo(_navProvider.packingTabIndex);
+    }
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _tabController?.dispose();
+    _navProvider.removeListener(_onNavChanged);
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -53,212 +47,465 @@ class _PackingListPageState extends State<PackingListPage> with SingleTickerProv
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Packing List'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              context.read<OrderProvider>().fetchOrders(status: _selectedStatus);
-            },
-            tooltip: 'Refresh',
-          ),
-          const SizedBox(width: 8),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Colors.blue,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: Colors.blue,
-          tabs: const [
-            Tab(text: 'On Process'),
-            Tab(text: 'On Preparation'),
-          ],
+        title: const Text('Antrean Packing'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        scrolledUnderElevation: 2,
+        titleTextStyle: const TextStyle(
+          color: Colors.black87,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
         ),
-      ),
-      body: Consumer<OrderProvider>(
-        builder: (context, provider, child) {
-          if (_tabController == null) return const SizedBox.shrink();
-
-          if (provider.isLoading && provider.orders.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (provider.error != null) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text('Error: ${provider.error}', style: const TextStyle(color: Colors.red)),
-              ),
-            );
-          }
-
-          return TabBarView(
-            controller: _tabController,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              _buildList(provider),
-              _buildList(provider),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildList(OrderProvider provider) {
-    return RefreshIndicator(
-      onRefresh: () => provider.fetchOrders(status: _selectedStatus),
-      child: provider.orders.isEmpty
-          ? ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-                const Center(child: Text('No orders found')),
-              ],
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: provider.orders.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final order = provider.orders[index];
-                return _buildOrderCard(order);
-              },
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(30),
             ),
+            child: TabBar(
+              controller: _tabController,
+              dividerColor: Colors.transparent,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.grey[600],
+              indicatorSize: TabBarIndicatorSize.tab,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+              indicator: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              tabs: const [
+                Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('Pesanan Baru', textAlign: TextAlign.center))),
+                Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('Tugas Saya', textAlign: TextAlign.center))),
+                Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('Menunggu Driver', textAlign: TextAlign.center))),
+              ],
+            ),
+          ),
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: const [
+          _OrderListTab(status: 'onprocess'),
+          _OrderListTab(status: 'onpreparation'),
+          _OrderListTab(status: 'prepared'),
+        ],
+      ),
+    );
+  }
+}
+
+class _OrderListTab extends StatefulWidget {
+  final String status;
+  const _OrderListTab({required this.status});
+
+  @override
+  State<_OrderListTab> createState() => _OrderListTabState();
+}
+
+class _OrderListTabState extends State<_OrderListTab> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<OrderProvider>().fetchOrders(status: widget.status);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<OrderProvider>(
+      builder: (context, provider, child) {
+        final navProvider = context.watch<NavigationProvider>();
+        final dashboardStats = context.watch<DashboardProvider>().stats;
+        bool forceEmpty = false;
+
+        if (dashboardStats != null) {
+          if (widget.status == 'onprocess' && dashboardStats.newOrders == 0) {
+            forceEmpty = true;
+          } else if (widget.status == 'onpreparation' && dashboardStats.processingOrders == 0) {
+            forceEmpty = true;
+          }
+        }
+
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final filteredOrders = provider.orders.where((o) {
+          if (o.status != widget.status) return false;
+          
+          if (widget.status == 'onprocess' && navProvider.filterPrioritas) {
+             final isDelayed = DateTime.now().difference(o.createdAt).inMinutes >= 15;
+             final isPriorityType = o.deliveryType == 'instant' || o.deliveryType == 'sameday';
+             if (!isDelayed && !isPriorityType) {
+               return false;
+             }
+          }
+          
+          return true;
+        }).toList();
+
+        if (filteredOrders.isEmpty || forceEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.inventory_2_rounded, size: 64, color: Colors.blue[300]),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  navProvider.filterPrioritas && widget.status == 'onprocess' ? 'Tidak ada pesanan prioritas' : 'Belum ada pesanan',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[800]),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Pesanan yang masuk akan tampil di sini',
+                  style: TextStyle(color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: () => provider.fetchOrders(status: widget.status),
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: filteredOrders.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 16),
+            itemBuilder: (context, index) {
+              final order = filteredOrders[index];
+              return _PremiumOrderCard(order: order);
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PremiumOrderCard extends StatelessWidget {
+  final OrderModel order;
+  const _PremiumOrderCard({required this.order});
+
+  Widget _buildSourceBadge(String source) {
+    String text = source.toUpperCase();
+    Color bgColor = Colors.grey[200]!;
+    Color textColor = Colors.black87;
+    IconData icon = Icons.storefront_rounded;
+
+    if (text.contains('APP')) {
+      bgColor = const Color(0xFF0EA5E9).withOpacity(0.1);
+      textColor = const Color(0xFF0284C7);
+      icon = Icons.smartphone_rounded;
+    } else if (text.contains('WEB')) {
+      bgColor = const Color(0xFF8B5CF6).withOpacity(0.1);
+      textColor = const Color(0xFF6D28D9);
+      icon = Icons.language_rounded;
+    } else if (text.contains('SHOPEE')) {
+      bgColor = const Color(0xFFF97316).withOpacity(0.1);
+      textColor = const Color(0xFFC2410C);
+      icon = Icons.shopping_cart_rounded;
+    } else if (text.contains('TOKOPEDIA')) {
+      bgColor = const Color(0xFF10B981).withOpacity(0.1);
+      textColor = const Color(0xFF047857);
+      icon = Icons.shopping_bag_rounded;
+    } else if (text.contains('TIKTOK')) {
+      bgColor = Colors.black.withOpacity(0.05);
+      textColor = Colors.black87;
+      icon = Icons.music_note_rounded;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: textColor.withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: textColor),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildOrderCard(OrderModel order) {
-    return Card(
-      elevation: 2,
-      child: ExpansionTile(
-        shape: const Border(),
-        collapsedShape: const Border(),
-        title: Text(
-          order.orderNumber,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text('${order.customerName} • ${order.items.length} items'),
-        trailing: _buildActionButtons(order),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
+  @override
+  Widget build(BuildContext context) {
+    final isPreparation = order.status == 'onpreparation';
+    final isPrepared = order.status == 'prepared';
+    final isDelayed = DateTime.now().difference(order.createdAt).inMinutes > 30;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            // Can always see details now!
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => PackingDetailPage(orderId: order.id)),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Items:', style: TextStyle(fontWeight: FontWeight.bold)),
-                ...order.items.map((item) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text('${item.quantity}x ${item.productName}'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        order.orderNumber,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isPrepared ? const Color(0xFF8B5CF6).withOpacity(0.15) : (isPreparation ? const Color(0xFFF59E0B).withOpacity(0.15) : const Color(0xFF3B82F6).withOpacity(0.15)),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        isPrepared ? '🟣 MENUNGGU DRIVER' : (isPreparation ? '🟠 PREPARING' : '🟡 NEW ORDER'),
+                        style: TextStyle(
+                          color: isPrepared ? const Color(0xFF6D28D9) : (isPreparation ? const Color(0xFFD97706) : const Color(0xFF2563EB)),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.access_time_rounded, size: 18, color: Colors.red),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        'Pickup: ${order.pickupTime.hour.toString().padLeft(2, '0')}:${order.pickupTime.minute.toString().padLeft(2, '0')} WIB', 
+                        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w800, fontSize: 16),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    if (order.deliveryType == 'instant' || order.deliveryType == 'sameday')
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(6)),
+                        child: const Text('🔥 Prioritas Tinggi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                      ),
+                  ],
+                ),
+                if (isDelayed) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.withOpacity(0.5)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Menunggu terlalu lama! (${DateTime.now().difference(order.createdAt).inMinutes} mnt)',
+                            style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
                           ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.person_rounded, size: 18, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(order.customerName, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 15))),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _buildSourceBadge(order.orderSource),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.shopping_bag_rounded, size: 18, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('${order.items.length} Barang', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w500)),
+                  ],
+                ),
+                if (order.assignedTo != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: const Color(0xFFF59E0B).withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                        child: const Icon(Icons.assignment_ind_rounded, size: 18, color: Color(0xFFD97706)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text('Assigned to: ${order.assignedTo}', style: const TextStyle(color: Color(0xFFD97706), fontWeight: FontWeight.w700))),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 20),
+                if (isPrepared)
+                  const SizedBox() // no buttons for prepared status, just waiting
+                else if (!isPreparation)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                          final adminName = await showDialog<String>(
+                            context: context,
+                            builder: (context) {
+                              final staffs = ['Andi', 'Budi', 'Citra', 'Deni', 'Eka', 'Fajar'];
+                              return AlertDialog(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                title: const Text('Siapa yang bertugas?', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                                content: Wrap(
+                                  spacing: 12,
+                                  runSpacing: 12,
+                                  alignment: WrapAlignment.center,
+                                  children: staffs.map((name) => ElevatedButton.icon(
+                                    icon: const Icon(Icons.person),
+                                    label: Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    ),
+                                    onPressed: () => Navigator.pop(context, name),
+                                  )).toList(),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Batal', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+
+                        if (adminName == null || adminName.trim().isEmpty) return;
+
+                        if (!context.mounted) return;
+                        final success = await context.read<OrderProvider>().startOrder(order.id, adminName.trim());
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(success ? 'Tugas Packing Diambil oleh ${adminName.trim()}!' : 'Gagal memproses'),
+                              backgroundColor: success ? const Color(0xFF10B981) : Colors.red,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                      ),
+                      child: const Text('Ambil Tugas Packing', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => PackingDetailPage(orderId: order.id)),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFF59E0B),
+                        side: BorderSide(color: const Color(0xFFF59E0B).withOpacity(0.5), width: 2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('Lanjutkan Packing', style: TextStyle(fontWeight: FontWeight.w700)),
+                          SizedBox(width: 8),
+                          Icon(Icons.arrow_forward_rounded, size: 18),
                         ],
                       ),
-                    )),
+                    ),
+                  ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButtons(OrderModel order) {
-    if (order.status == 'onprocess') {
-      return ElevatedButton(
-        onPressed: () => _handleStart(order.id),
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-        child: const Text('Start'),
-      );
-    } else if (order.status == 'onpreparation') {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextButton(
-            onPressed: () => _handleCancel(order.id),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Cancel'),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () => _handleFinish(order.id),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-            child: const Text('Finish'),
-          ),
-        ],
-      );
-    }
-    return const SizedBox.shrink();
-  }
-
-  Future<void> _handleStart(int id) async {
-    final success = await context.read<OrderProvider>().startOrder(id);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(success ? 'Preparation started' : 'Failed to start preparation')),
-    );
-  }
-
-  Future<void> _handleFinish(int id) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera, imageQuality: 50, maxWidth: 1024, maxHeight: 1024);
-
-    if (pickedFile == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Photo is required to finish the order')),
-      );
-      return;
-    }
-
-    final file = File(pickedFile.path);
-    
-    if (!mounted) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Packing'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Is this photo correct?'),
-            const SizedBox(height: 16),
-            Image.file(file, height: 200, fit: BoxFit.cover),
-          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Retake / Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-            child: const Text('Confirm Finish'),
-          ),
-        ],
       ),
-    );
-
-    if (confirmed != true) return;
-
-    final success = await context.read<OrderProvider>().finishOrder(id, photoFinal: file);
-    
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(success ? 'Order finished' : 'Failed to finish order')),
-    );
-  }
-
-  Future<void> _handleCancel(int id) async {
-    final success = await context.read<OrderProvider>().cancelOrder(id);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(success ? 'Preparation canceled' : 'Failed to cancel preparation')),
     );
   }
 }
