@@ -97,6 +97,7 @@ class _PackingListPageState extends State<PackingListPage> with SingleTickerProv
       ),
       body: TabBarView(
         controller: _tabController,
+        physics: const NeverScrollableScrollPhysics(),
         children: const [
           _OrderListTab(status: 'onprocess'),
           _OrderListTab(status: 'onpreparation'),
