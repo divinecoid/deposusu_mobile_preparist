@@ -8,8 +8,8 @@ class OrderRepositoryImpl implements OrderRepository {
   OrderRepositoryImpl(this.remoteDataSource);
 
   @override
-  Future<List<OrderModel>> getOrders(String status) async {
-    return await remoteDataSource.getOrders(status: status);
+  Future<List<OrderModel>> getOrders(String status, {String? historyStatus}) async {
+    return await remoteDataSource.getOrders(status: status, historyStatus: historyStatus);
   }
 
   @override

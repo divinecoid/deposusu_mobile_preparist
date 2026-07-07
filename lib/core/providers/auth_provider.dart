@@ -10,6 +10,7 @@ class AuthProvider extends ChangeNotifier {
   Map<String, dynamic>? _user;
   bool _isLoading = false;
   String? _error;
+  String? _profileError;
 
   AuthProvider(this._apiClient) {
     _apiClient.onUnauthorized = () {
@@ -21,6 +22,7 @@ class AuthProvider extends ChangeNotifier {
   Map<String, dynamic>? get user => _user;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String? get profileError => _profileError;
   bool get isAuthenticated => _apiClient.token != null;
 
   Future<void> _init() async {
@@ -97,9 +99,19 @@ class AuthProvider extends ChangeNotifier {
     GlobalKeys.navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
   }
 
-  Future<bool> updateBasicProfile(String name, String? photoPath) async {
+  Future<bool> updateBasicProfile({
+    required String name,
+    String? phone,
+    String? email,
+    String? photoPath,
+  }) async {
+    _profileError = null;
     try {
-      final fields = {'name': name};
+      final fields = {
+        'name': name,
+        if (phone != null) 'phone': phone,
+        if (email != null) 'email': email,
+      };
       final files = <http.MultipartFile>[];
       if (photoPath != null && photoPath.isNotEmpty) {
         files.add(await http.MultipartFile.fromPath('photo', photoPath));
@@ -111,18 +123,29 @@ class AuthProvider extends ChangeNotifier {
         files: files,
       );
 
+      final responseBody = await response.stream.bytesToString();
+      print('[updateBasicProfile] status: ${response.statusCode}, body: $responseBody');
+
+      final decoded = jsonDecode(responseBody);
       if (response.statusCode == 200) {
-        final responseBody = await response.stream.bytesToString();
-        final decoded = jsonDecode(responseBody);
         if (decoded['success'] == true) {
           _user = decoded['user'];
           notifyListeners();
           return true;
         }
+      } else {
+        if (decoded['errors'] != null) {
+          final Map<String, dynamic> errors = decoded['errors'];
+          _profileError = errors.values.first.first.toString();
+        } else {
+          _profileError = decoded['message'] ?? 'Gagal memperbarui profil.';
+        }
       }
     } catch (e) {
       debugPrint("Update basic profile error: $e");
+      _profileError = e.toString();
     }
+    notifyListeners();
     return false;
   }
 

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/providers/auth_provider.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../widgets/otp_verification_dialog.dart';
 
 class EditProfilePage extends StatefulWidget {
@@ -15,6 +18,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   bool _isLoading = false;
+  File? _imageFile;
+  final _picker = ImagePicker();
 
   @override
   void initState() {
@@ -27,6 +32,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
+  Future<void> _pickImage() async {
+    try {
+      final pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 500,
+        maxHeight: 500,
+        imageQuality: 80,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _imageFile = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      debugPrint("Error picking profile image: $e");
+    }
+  }
+
   Future<void> _handleSave() async {
     final authProvider = context.read<AuthProvider>();
     final user = authProvider.user;
@@ -36,36 +59,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final newPhone = _phoneController.text.trim();
     final newEmail = _emailController.text.trim();
 
-    setState(() => _isLoading = true);
+    final nameHasChanged = newName != user['name'];
+    final phoneHasChanged = newPhone != user['phone'] && newPhone.isNotEmpty;
+    final emailHasChanged = newEmail != user['email'] && newEmail.isNotEmpty;
+    final hasNewPhoto = _imageFile != null;
 
-    // 1. Update Basic Profile (Name)
-    if (newName != user['name']) {
-      await authProvider.updateBasicProfile(newName, null); // Photo omitted for now
-    }
+    if (nameHasChanged || phoneHasChanged || emailHasChanged || hasNewPhoto) {
+      final success = await authProvider.updateBasicProfile(
+        name: newName,
+        phone: phoneHasChanged ? newPhone : null,
+        email: emailHasChanged ? newEmail : null,
+        photoPath: _imageFile?.path,
+      );
 
-    // 2. Update Phone (OTP Required)
-    if (newPhone != user['phone'] && newPhone.isNotEmpty) {
-      final success = await authProvider.requestOtp('phone', newPhone);
-      if (success && mounted) {
-        await showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (_) => OtpVerificationDialog(updateType: 'phone', newValue: newPhone),
+      if (!success && mounted) {
+        final errMsg = authProvider.profileError ?? 'Gagal memperbarui profil. Silakan periksa format data.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errMsg), backgroundColor: Colors.red),
         );
-      }
-    }
-
-    // 3. Update Email (OTP Required)
-    if (newEmail != user['email'] && newEmail.isNotEmpty) {
-      final success = await authProvider.requestOtp('email', newEmail);
-      if (success && mounted) {
-        await showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (_) => OtpVerificationDialog(updateType: 'email', newValue: newEmail),
-        );
+        setState(() => _isLoading = false);
+        return;
       }
     }
 
@@ -88,27 +101,47 @@ class _EditProfilePageState extends State<EditProfilePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
-              child: Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.grey[200],
-                    backgroundImage: null, // We can load photo here
-                    child: const Icon(Icons.person, size: 50, color: Colors.grey),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Colors.blue,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+              child: Consumer<AuthProvider>(
+                builder: (context, authProvider, child) {
+                  final user = authProvider.user;
+                  final hasLocalImage = _imageFile != null;
+                  final hasNetworkImage = user != null && user['photo'] != null;
+
+                  ImageProvider? imageProvider;
+                  if (hasLocalImage) {
+                    imageProvider = FileImage(_imageFile!);
+                  } else if (hasNetworkImage) {
+                    imageProvider = NetworkImage(AppConstants.storageUrl + user['photo']);
+                  }
+
+                  return GestureDetector(
+                    onTap: _pickImage,
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.grey[200],
+                          backgroundImage: imageProvider,
+                          child: imageProvider == null
+                              ? const Icon(Icons.person, size: 50, color: Colors.grey)
+                              : null,
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                          ),
+                        )
+                      ],
                     ),
-                  )
-                ],
+                  );
+                },
               ),
             ),
             const SizedBox(height: 32),

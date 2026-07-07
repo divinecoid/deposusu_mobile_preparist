@@ -23,13 +23,13 @@ class OrderProvider extends ChangeNotifier {
 
 
 
-  Future<void> fetchOrders({String status = 'onprocess'}) async {
+  Future<void> fetchOrders({String status = 'onprocess', String? historyStatus}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final apiOrders = await repository.getOrders(status);
+      final apiOrders = await repository.getOrders(status, historyStatus: historyStatus);
       if (status == 'onprocess') {
         _onProcessOrders = apiOrders;
         _orders = List.from(_onProcessOrders);

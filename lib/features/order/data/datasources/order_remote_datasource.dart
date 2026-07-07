@@ -5,7 +5,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../models/order_model.dart';
 
 abstract class OrderRemoteDataSource {
-  Future<List<OrderModel>> getOrders({String status = 'onprocess'});
+  Future<List<OrderModel>> getOrders({String status = 'onprocess', String? historyStatus});
   Future<bool> startPreparation(int orderId, String adminName);
   Future<bool> finishPreparation(
     int orderId, 
@@ -22,10 +22,11 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   OrderRemoteDataSourceImpl(this.apiClient);
 
   @override
-  Future<List<OrderModel>> getOrders({String status = 'onprocess'}) async {
+  Future<List<OrderModel>> getOrders({String status = 'onprocess', String? historyStatus}) async {
     final response = await apiClient.get(AppConstants.orders, queryParams: {
       'status': status,
       'sort': 'desc',
+      if (historyStatus != null) 'history_status': historyStatus,
     });
 
     if (response.statusCode == 200) {
