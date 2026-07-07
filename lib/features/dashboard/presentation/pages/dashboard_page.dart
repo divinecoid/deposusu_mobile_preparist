@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../provider/dashboard_provider.dart';
 import '../../../../core/providers/navigation_provider.dart';
+import '../../../../core/providers/auth_provider.dart';
+import '../../../../core/constants/app_constants.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -22,37 +24,80 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Consumer<DashboardProvider>(
-        builder: (context, provider, child) {
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Consumer2<DashboardProvider, AuthProvider>(
+        builder: (context, provider, authProvider, child) {
+          final user = authProvider.user;
+
           return RefreshIndicator(
             onRefresh: () => provider.fetchStats(),
             child: CustomScrollView(
               slivers: [
                 SliverAppBar(
-                  expandedHeight: 140,
+                  expandedHeight: 150,
                   floating: false,
                   pinned: true,
-                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  backgroundColor: const Color(0xFFE0F2FE),
+                  elevation: 0,
                   flexibleSpace: FlexibleSpaceBar(
-                    titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
-                    title: const Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    background: Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFFE0F2FE), // Biru langit cerah
+                            Color(0xFFEFF6FF), // Biru muda pastel
+                          ],
+                        ),
+                      ),
+                    ),
+                    titlePadding: const EdgeInsets.only(left: 24, right: 24, bottom: 20),
+                    title: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          'Halo, Preparist! 👋',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Halo, ${user?['name']?.split(' ')?.first ?? 'Preparist'}!',
+                                style: const TextStyle(
+                                  color: Color(0xFF0F172A), // Slate gelap kontras
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Kemasan rapi, pelanggan happy! Semangat hari ini.',
+                                style: TextStyle(
+                                  color: Color(0xFF0284C7), // Biru cerah kontras
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        Text(
-                          'Siap menyiapkan pesanan hari ini?',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
+                        const SizedBox(width: 12),
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFFBAE6FD), width: 1.5),
+                          ),
+                          child: CircleAvatar(
+                            radius: 16,
+                            backgroundColor: Colors.white,
+                            backgroundImage: user?['photo'] != null 
+                                ? NetworkImage(AppConstants.storageUrl + user!['photo']) 
+                                : null,
+                            child: user?['photo'] == null 
+                                ? const Icon(Icons.person, size: 16, color: Color(0xFF0284C7)) 
+                                : null,
                           ),
                         ),
                       ],
@@ -292,7 +337,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 title: 'Pesanan Baru',
                 subtitle: 'Pesanan baru masuk',
                 value: stats.newOrders.toString(),
-                gradient: const [Color(0xFFF97316), Color(0xFFC2410C)], // Orange
+                gradient: const [Color(0xFFF97316), Color(0xFFEA580C)], // Orange
                 icon: Icons.inbox_outlined,
                 onTap: () => context.read<NavigationProvider>().navigateToPacking(0),
               ),
@@ -301,9 +346,9 @@ class _DashboardPageState extends State<DashboardPage> {
             Expanded(
               child: _ModernStatCard(
                 title: 'Sedang Diproses',
-                subtitle: 'Pesanan sedang dikerjakan',
+                subtitle: 'Pesanan dikerjakan',
                 value: stats.processingOrders.toString(),
-                gradient: const [Color(0xFF3B82F6), Color(0xFF1D4ED8)], // Blue
+                gradient: const [Color(0xFF3B82F6), Color(0xFF2563EB)], // Blue
                 icon: Icons.loop_outlined,
                 onTap: () => context.read<NavigationProvider>().navigateToPacking(1),
               ),
@@ -316,9 +361,9 @@ class _DashboardPageState extends State<DashboardPage> {
             Expanded(
               child: _ModernStatCard(
                 title: 'Menunggu Driver',
-                subtitle: 'Pesanan siap di-pickup',
+                subtitle: 'Siap di-pickup',
                 value: stats.waitingDriverOrders.toString(),
-                gradient: const [Color(0xFFFBBF24), Color(0xFFD97706)], // Yellow
+                gradient: const [Color(0xFF8B5CF6), Color(0xFF6D28D9)], // Purple/Violet
                 icon: Icons.delivery_dining_outlined,
                 onTap: () => context.read<NavigationProvider>().navigateToPacking(2),
               ),
@@ -327,9 +372,9 @@ class _DashboardPageState extends State<DashboardPage> {
             Expanded(
               child: _ModernStatCard(
                 title: 'Selesai Hari Ini',
-                subtitle: 'Pesanan sudah selesai',
+                subtitle: 'Tugas selesai',
                 value: stats.completedTodayOrders.toString(),
-                gradient: const [Color(0xFF10B981), Color(0xFF047857)], // Green
+                gradient: const [Color(0xFF10B981), Color(0xFF059669)], // Green
                 icon: Icons.check_circle_outline,
                 onTap: () => context.read<NavigationProvider>().navigateToHistory(filterHariIni: true),
               ),
