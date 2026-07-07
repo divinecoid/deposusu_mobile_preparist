@@ -14,10 +14,12 @@ class OrderProvider extends ChangeNotifier {
   List<OrderModel> _orders = [];
   bool _isLoading = false;
   String? _error;
+  String? _lastUploadError;
 
   List<OrderModel> get orders => _orders;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String? get lastUploadError => _lastUploadError;
 
 
 
@@ -177,6 +179,7 @@ class OrderProvider extends ChangeNotifier {
 
   Future<bool> finishPacking(int orderId, String photoIsiPath, String photoFinalPath) async {
     _isLoading = true;
+    _lastUploadError = null;
     notifyListeners();
 
     try {
@@ -190,10 +193,24 @@ class OrderProvider extends ChangeNotifier {
         _orders = List.from(_onPreparationOrders);
         return true;
       }
+      _lastUploadError = 'Server menolak upload foto. Cek koneksi atau coba lagi.';
       return false;
     } catch (e) {
       print('API Error finishPacking: $e');
       _error = e.toString();
+      if (e.toString().contains('TimeoutException')) {
+        _lastUploadError = 'Koneksi timeout saat upload foto. Pastikan WiFi stabil lalu coba lagi.';
+      } else if (e.toString().contains('SocketException')) {
+        _lastUploadError = 'Tidak ada koneksi internet. Periksa jaringan lalu coba lagi.';
+      } else if (e.toString().contains('HTTP 403')) {
+        _lastUploadError = 'Akses ditolak (403). Pesanan ini tidak di-assign ke akun kamu.';
+      } else if (e.toString().contains('HTTP 422')) {
+        _lastUploadError = 'Validasi gagal (422). Format foto tidak diterima server.';
+      } else if (e.toString().contains('HTTP 5')) {
+        _lastUploadError = 'Server error. Coba lagi beberapa saat.';
+      } else {
+        _lastUploadError = 'Gagal upload foto: ${e.toString()}';
+      }
       return false;
     } finally {
       _isLoading = false;

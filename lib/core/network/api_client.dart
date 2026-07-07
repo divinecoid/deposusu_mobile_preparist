@@ -107,7 +107,7 @@ class ApiClient {
     if (fields != null) request.fields.addAll(fields);
     if (files != null) request.files.addAll(files);
 
-    final response = await _client.send(request).timeout(const Duration(seconds: 15));
+    final response = await _client.send(request).timeout(const Duration(seconds: 60));
     _handleResponse(endpoint, response.statusCode);
     return response;
   }

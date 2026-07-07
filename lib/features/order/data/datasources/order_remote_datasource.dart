@@ -57,6 +57,15 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
       files: files,
     );
     
-    return response.statusCode == 200;
+    final statusCode = response.statusCode;
+    final responseBody = await response.stream.bytesToString();
+    
+    print('[finishPreparation] status: $statusCode, body: $responseBody');
+    
+    if (statusCode != 200) {
+      throw Exception('Upload foto gagal (HTTP $statusCode): $responseBody');
+    }
+    
+    return true;
   }
 }

@@ -264,8 +264,9 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
         );
         Navigator.of(context).pop(); // Go back to list
       } else {
+        final errMsg = provider.lastUploadError ?? 'Gagal menyelesaikan pesanan.';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal menyelesaikan pesanan.'), backgroundColor: Colors.red),
+          SnackBar(content: Text(errMsg), backgroundColor: Colors.red),
         );
       }
     }

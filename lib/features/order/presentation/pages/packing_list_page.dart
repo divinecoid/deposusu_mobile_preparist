@@ -160,27 +160,41 @@ class _OrderListTabState extends State<_OrderListTab> {
         }).toList();
 
         if (filteredOrders.isEmpty || forceEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.05),
-                    shape: BoxShape.circle,
+          return RefreshIndicator(
+            onRefresh: () async {
+              await Future.wait([
+                provider.fetchOrders(status: widget.status),
+                context.read<DashboardProvider>().fetchStats(),
+              ]);
+            },
+            child: CustomScrollView(
+              slivers: [
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.05),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.inventory_2_rounded, size: 64, color: Colors.blue[300]),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          navProvider.filterPrioritas && widget.status == 'onprocess' ? 'Tidak ada pesanan prioritas' : 'Belum ada pesanan',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[800]),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tarik ke bawah untuk memperbarui',
+                          style: TextStyle(color: Colors.grey[500]),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Icon(Icons.inventory_2_rounded, size: 64, color: Colors.blue[300]),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  navProvider.filterPrioritas && widget.status == 'onprocess' ? 'Tidak ada pesanan prioritas' : 'Belum ada pesanan',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[800]),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Pesanan yang masuk akan tampil di sini',
-                  style: TextStyle(color: Colors.grey[500]),
                 ),
               ],
             ),
@@ -188,7 +202,12 @@ class _OrderListTabState extends State<_OrderListTab> {
         }
 
         return RefreshIndicator(
-          onRefresh: () => provider.fetchOrders(status: widget.status),
+          onRefresh: () async {
+            await Future.wait([
+              provider.fetchOrders(status: widget.status),
+              context.read<DashboardProvider>().fetchStats(),
+            ]);
+          },
           child: ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: filteredOrders.length,
@@ -203,6 +222,7 @@ class _OrderListTabState extends State<_OrderListTab> {
     );
   }
 }
+
 
 class _PremiumOrderCard extends StatelessWidget {
   final OrderModel order;

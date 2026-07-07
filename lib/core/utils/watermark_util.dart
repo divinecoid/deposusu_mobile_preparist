@@ -1,8 +1,6 @@
 import 'dart:io';
 import 'package:image/image.dart' as img;
-import 'package:intl/intl.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
+import 'package:path_provider/path_provider.dart';
 
 class WatermarkUtil {
   static Future<File> addPackingWatermark({
@@ -69,8 +67,20 @@ class WatermarkUtil {
     }
 
     final encoded = img.encodeJpg(decodedImage, quality: 85);
-    await imageFile.writeAsBytes(encoded);
 
-    return imageFile;
+    // Save to app's documents directory (persistent, won't be cleared by OS)
+    final appDir = await getApplicationDocumentsDirectory();
+    final packingDir = Directory('${appDir.path}/packing_photos');
+    if (!await packingDir.exists()) {
+      await packingDir.create(recursive: true);
+    }
+    
+    final fileName = 'packing_${now.millisecondsSinceEpoch}.jpg';
+    final savedFile = File('${packingDir.path}/$fileName');
+    await savedFile.writeAsBytes(encoded);
+
+    print('[WatermarkUtil] Saved watermarked file to: ${savedFile.path} (${await savedFile.length()} bytes)');
+    
+    return savedFile;
   }
 }
