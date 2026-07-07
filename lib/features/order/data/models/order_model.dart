@@ -139,6 +139,7 @@ class OrderItemModel {
       productName: json['product'] != null ? (json['product']['name']?.toString() ?? 'Produk') : 'Produk',
       quantity: _parseInt(json['quantity']),
       subtotal: _parseDouble(json['subtotal']),
+      checkedQuantity: _parseInt(json['checked_quantity']),
     );
   }
 }

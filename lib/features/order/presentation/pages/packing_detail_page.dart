@@ -158,102 +158,76 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
     provider.updatePackerName(order.id, packerName);
     
     // Show Final Check Bottom Sheet
-    final success = await showModalBottomSheet<bool>(
+    final proceed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      isDismissible: false,
-      enableDrag: false,
+      isDismissible: true,
+      enableDrag: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (bottomSheetContext) {
-        return Consumer<OrderProvider>(
-          builder: (context, orderProvider, child) {
-            final isLoading = orderProvider.isLoading;
-            return PopScope(
-              canPop: !isLoading,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: isLoading
-                      ? Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(height: 24),
-                            const Center(child: CircularProgressIndicator()),
-                            const SizedBox(height: 24),
-                            const Text(
-                              'Menyimpan Bukti & Menyelesaikan Packing...',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Mohon tunggu sebentar, jangan menutup aplikasi.',
-                              style: TextStyle(fontSize: 14, color: Colors.grey),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 24),
-                          ],
-                        )
-                      : Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF10B981).withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.verified_user_rounded, size: 64, color: Color(0xFF10B981)),
-                            ),
-                            const SizedBox(height: 24),
-                            const Text('Tahap Final Check', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Demi menjaga kualitas, mohon pastikan sekali lagi:\n\n'
-                              '1. Semua barang sudah masuk kardus/tas.\n'
-                              '2. Tidak ada barang yang tertinggal.\n'
-                              '3. Segel dan label resi sudah menempel kuat.',
-                              style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.5, fontWeight: FontWeight.w500),
-                              textAlign: TextAlign.left,
-                            ),
-                            const SizedBox(height: 40),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () async {
-                                  // Finish order with both photos
-                                  final ok = await orderProvider.finishPacking(order.id, _photoIsiPaket!.path, _photoPaketFinal!.path);
-                                  if (!bottomSheetContext.mounted) return;
-                                  Navigator.pop(bottomSheetContext, ok); // close bottom sheet and return result
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF10B981),
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 20),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                  elevation: 0,
-                                ),
-                                child: const Text('✅ FINAL CHECK COMPLETE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            TextButton(
-                              onPressed: () => Navigator.pop(bottomSheetContext),
-                              child: const Text('Batal, saya mau cek ulang', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                        ),
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.verified_user_rounded, size: 64, color: Color(0xFF10B981)),
                 ),
-              ),
-            );
-          },
+                const SizedBox(height: 24),
+                const Text('Tahap Final Check', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 16),
+                const Text(
+                  'Demi menjaga kualitas, mohon pastikan sekali lagi:\n\n'
+                  '1. Semua barang sudah masuk kardus/tas.\n'
+                  '2. Tidak ada barang yang tertinggal.\n'
+                  '3. Segel dan label resi sudah menempel kuat.',
+                  style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.5, fontWeight: FontWeight.w500),
+                  textAlign: TextAlign.left,
+                ),
+                const SizedBox(height: 40),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(bottomSheetContext, true); // Return true to proceed
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    child: const Text('✅ FINAL CHECK COMPLETE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.pop(bottomSheetContext, false),
+                  child: const Text('Batal, saya mau cek ulang', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
         );
       },
     );
 
-    if (success != null && mounted) {
+    if (proceed == true && mounted) {
+      // Trigger the actual file and data upload on the main page.
+      // This will set provider.isLoading to true and display the full-screen freeze loading overlay.
+      final success = await provider.finishPacking(order.id, _photoIsiPaket!.path, _photoPaketFinal!.path);
+      
+      if (!mounted) return;
+      
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

@@ -7,7 +7,13 @@ import '../models/order_model.dart';
 abstract class OrderRemoteDataSource {
   Future<List<OrderModel>> getOrders({String status = 'onprocess'});
   Future<bool> startPreparation(int orderId, String adminName);
-  Future<bool> finishPreparation(int orderId, String photoIsiPath, String photoFinalPath);
+  Future<bool> finishPreparation(
+    int orderId, 
+    String photoIsiPath, 
+    String photoFinalPath, {
+    required List<Map<String, dynamic>> items,
+    required List<String> logs,
+  });
 }
 
 class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
@@ -42,7 +48,13 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   }
 
   @override
-  Future<bool> finishPreparation(int orderId, String photoIsiPath, String photoFinalPath) async {
+  Future<bool> finishPreparation(
+    int orderId, 
+    String photoIsiPath, 
+    String photoFinalPath, {
+    required List<Map<String, dynamic>> items,
+    required List<String> logs,
+  }) async {
     final files = <http.MultipartFile>[];
     
     if (photoIsiPath.isNotEmpty) {
@@ -52,9 +64,15 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
       files.add(await http.MultipartFile.fromPath('photo_final', photoFinalPath));
     }
 
+    final fields = <String, String>{
+      'items': jsonEncode(items),
+      'logs': jsonEncode(logs),
+    };
+
     final response = await apiClient.postMultipart(
       AppConstants.finishOrder(orderId),
       files: files,
+      fields: fields,
     );
     
     final statusCode = response.statusCode;

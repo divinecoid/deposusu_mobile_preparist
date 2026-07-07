@@ -183,13 +183,30 @@ class OrderProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final success = await repository.finishPreparation(orderId, photoIsiPath, photoFinalPath);
+      final orderIdx = _onPreparationOrders.indexWhere((o) => o.id == orderId);
+      if (orderIdx == -1) {
+        _lastUploadError = 'Pesanan tidak ditemukan di memory lokal.';
+        return false;
+      }
+
+      final order = _onPreparationOrders[orderIdx];
+      final itemsPayload = order.items.map((item) => {
+        'id': item.id,
+        'checked_quantity': item.checkedQuantity,
+      }).toList();
+      final logsPayload = order.editLogs;
+
+      final success = await repository.finishPreparation(
+        orderId, 
+        photoIsiPath, 
+        photoFinalPath,
+        items: itemsPayload,
+        logs: logsPayload,
+      );
+
       if (success) {
-        final idx = _onPreparationOrders.indexWhere((o) => o.id == orderId);
-        if (idx != -1) {
-          final order = _onPreparationOrders.removeAt(idx);
-          _preparedOrders.add(order.copyWith(status: 'prepared'));
-        }
+        _onPreparationOrders.removeAt(orderIdx);
+        _preparedOrders.add(order.copyWith(status: 'prepared'));
         _orders = List.from(_onPreparationOrders);
         return true;
       }
