@@ -75,6 +75,17 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                         const SizedBox(height: 16),
                         _buildContent(provider, context),
+                        const SizedBox(height: 32),
+                        const Text(
+                          'Performa Waktu Packing',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildPackingPerformanceChart(provider),
                         const SizedBox(height: 40),
                       ],
                     ),
@@ -84,6 +95,153 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildPackingPerformanceChart(DashboardProvider provider) {
+    if (provider.isLoading) {
+      return const SizedBox(
+        height: 150,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final stats = provider.stats;
+    if (stats == null || stats.packingHistory.isEmpty) {
+      return Container(
+        height: 180,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 10)),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.bar_chart_rounded, size: 48, color: Colors.grey[300]),
+            const SizedBox(height: 12),
+            Text(
+              'Belum ada riwayat packing hari ini',
+              style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      );
+    }
+
+    int maxCount = stats.packingHistory
+        .map((e) => e.count)
+        .fold(0, (max, e) => e > max ? e : max);
+    if (maxCount < 3) maxCount = 3;
+
+    int totalPackedToday = stats.packingHistory
+        .map((e) => e.count)
+        .fold(0, (sum, e) => sum + e);
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Paket Selesai per Jam Kerja',
+                style: TextStyle(color: Colors.grey[500], fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Total Hari Ini: $totalPackedToday pkt',
+                  style: const TextStyle(color: Color(0xFF0284C7), fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Scrollable Chart Row for hourly bars
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: SizedBox(
+              height: 160,
+              width: 500, // Fixed width to give bars enough breathing room
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final barWidth = (constraints.maxWidth - (12 * (stats.packingHistory.length - 1))) / stats.packingHistory.length;
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: stats.packingHistory.map((item) {
+                      final heightPercent = item.count / maxCount;
+
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          // Count badge on top of bar (visible only if count > 0 for premium clean look)
+                          Text(
+                            item.count > 0 ? '${item.count}' : '-',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: item.count > 0 ? const Color(0xFF0284C7) : Colors.grey[400],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          // Bar
+                          Container(
+                            width: barWidth,
+                            height: (item.count > 0) ? (100 * heightPercent) : 4.0, // tiny base if 0
+                            decoration: BoxDecoration(
+                              gradient: item.count > 0
+                                  ? const LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Color(0xFF0284C7),
+                                        Color(0xFF38BDF8),
+                                      ],
+                                    )
+                                  : null,
+                              color: item.count == 0 ? Colors.grey[200] : null,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Hour Label
+                          Text(
+                            item.hour,
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
