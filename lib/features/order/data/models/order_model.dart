@@ -90,6 +90,7 @@ class OrderModel {
       editLogs: [],
       pickupTime: json['pickup_time'] != null ? DateTime.parse(json['pickup_time'].toString()) : DateTime.now().add(const Duration(minutes: 30)),
       deliveryType: json['delivery_type']?.toString() ?? 'regular',
+      packedAt: json['prepared_at'] != null ? DateTime.parse(json['prepared_at'].toString()) : null,
     );
   }
 }
