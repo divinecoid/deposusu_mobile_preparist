@@ -5,9 +5,15 @@ import '../../../../core/constants/app_constants.dart';
 import '../models/order_model.dart';
 
 abstract class OrderRemoteDataSource {
-  Future<List<OrderModel>> getOrders({String status = 'onprocess'});
+  Future<List<OrderModel>> getOrders({String status = 'onprocess', String? historyStatus});
   Future<bool> startPreparation(int orderId, String adminName);
-  Future<bool> finishPreparation(int orderId, String photoIsiPath, String photoFinalPath);
+  Future<bool> finishPreparation(
+    int orderId, 
+    String photoIsiPath, 
+    String photoFinalPath, {
+    required List<Map<String, dynamic>> items,
+    required List<String> logs,
+  });
 }
 
 class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
@@ -16,8 +22,12 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   OrderRemoteDataSourceImpl(this.apiClient);
 
   @override
-  Future<List<OrderModel>> getOrders({String status = 'onprocess'}) async {
-    final response = await apiClient.get(AppConstants.orders, queryParams: {'status': status});
+  Future<List<OrderModel>> getOrders({String status = 'onprocess', String? historyStatus}) async {
+    final response = await apiClient.get(AppConstants.orders, queryParams: {
+      'status': status,
+      'sort': 'desc',
+      if (historyStatus != null) 'history_status': historyStatus,
+    });
 
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
@@ -39,7 +49,13 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
   }
 
   @override
-  Future<bool> finishPreparation(int orderId, String photoIsiPath, String photoFinalPath) async {
+  Future<bool> finishPreparation(
+    int orderId, 
+    String photoIsiPath, 
+    String photoFinalPath, {
+    required List<Map<String, dynamic>> items,
+    required List<String> logs,
+  }) async {
     final files = <http.MultipartFile>[];
     
     if (photoIsiPath.isNotEmpty) {
@@ -49,11 +65,26 @@ class OrderRemoteDataSourceImpl implements OrderRemoteDataSource {
       files.add(await http.MultipartFile.fromPath('photo_final', photoFinalPath));
     }
 
+    final fields = <String, String>{
+      'items': jsonEncode(items),
+      'logs': jsonEncode(logs),
+    };
+
     final response = await apiClient.postMultipart(
       AppConstants.finishOrder(orderId),
       files: files,
+      fields: fields,
     );
     
-    return response.statusCode == 200;
+    final statusCode = response.statusCode;
+    final responseBody = await response.stream.bytesToString();
+    
+    print('[finishPreparation] status: $statusCode, body: $responseBody');
+    
+    if (statusCode != 200) {
+      throw Exception('Upload foto gagal (HTTP $statusCode): $responseBody');
+    }
+    
+    return true;
   }
 }

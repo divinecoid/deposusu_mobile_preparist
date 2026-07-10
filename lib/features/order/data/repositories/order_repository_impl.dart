@@ -8,8 +8,8 @@ class OrderRepositoryImpl implements OrderRepository {
   OrderRepositoryImpl(this.remoteDataSource);
 
   @override
-  Future<List<OrderModel>> getOrders(String status) async {
-    return await remoteDataSource.getOrders(status: status);
+  Future<List<OrderModel>> getOrders(String status, {String? historyStatus}) async {
+    return await remoteDataSource.getOrders(status: status, historyStatus: historyStatus);
   }
 
   @override
@@ -18,7 +18,19 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   @override
-  Future<bool> finishPreparation(int orderId, String photoIsiPath, String photoFinalPath) async {
-    return await remoteDataSource.finishPreparation(orderId, photoIsiPath, photoFinalPath);
+  Future<bool> finishPreparation(
+    int orderId, 
+    String photoIsiPath, 
+    String photoFinalPath, {
+    required List<Map<String, dynamic>> items,
+    required List<String> logs,
+  }) async {
+    return await remoteDataSource.finishPreparation(
+      orderId, 
+      photoIsiPath, 
+      photoFinalPath,
+      items: items,
+      logs: logs,
+    );
   }
 }

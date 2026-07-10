@@ -5,6 +5,7 @@ import '../../data/models/order_model.dart';
 import 'packing_detail_page.dart';
 import '../../../../features/dashboard/presentation/provider/dashboard_provider.dart';
 import '../../../../core/providers/navigation_provider.dart';
+import '../../../../core/providers/auth_provider.dart';
 
 class PackingListPage extends StatefulWidget {
   const PackingListPage({super.key});
@@ -96,6 +97,7 @@ class _PackingListPageState extends State<PackingListPage> with SingleTickerProv
       ),
       body: TabBarView(
         controller: _tabController,
+        physics: const NeverScrollableScrollPhysics(),
         children: const [
           _OrderListTab(status: 'onprocess'),
           _OrderListTab(status: 'onpreparation'),
@@ -158,27 +160,41 @@ class _OrderListTabState extends State<_OrderListTab> {
         }).toList();
 
         if (filteredOrders.isEmpty || forceEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.05),
-                    shape: BoxShape.circle,
+          return RefreshIndicator(
+            onRefresh: () async {
+              await Future.wait([
+                provider.fetchOrders(status: widget.status),
+                context.read<DashboardProvider>().fetchStats(),
+              ]);
+            },
+            child: CustomScrollView(
+              slivers: [
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.05),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.inventory_2_rounded, size: 64, color: Colors.blue[300]),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          navProvider.filterPrioritas && widget.status == 'onprocess' ? 'Tidak ada pesanan prioritas' : 'Belum ada pesanan',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[800]),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tarik ke bawah untuk memperbarui',
+                          style: TextStyle(color: Colors.grey[500]),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Icon(Icons.inventory_2_rounded, size: 64, color: Colors.blue[300]),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  navProvider.filterPrioritas && widget.status == 'onprocess' ? 'Tidak ada pesanan prioritas' : 'Belum ada pesanan',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey[800]),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Pesanan yang masuk akan tampil di sini',
-                  style: TextStyle(color: Colors.grey[500]),
                 ),
               ],
             ),
@@ -186,7 +202,12 @@ class _OrderListTabState extends State<_OrderListTab> {
         }
 
         return RefreshIndicator(
-          onRefresh: () => provider.fetchOrders(status: widget.status),
+          onRefresh: () async {
+            await Future.wait([
+              provider.fetchOrders(status: widget.status),
+              context.read<DashboardProvider>().fetchStats(),
+            ]);
+          },
           child: ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: filteredOrders.length,
@@ -201,6 +222,7 @@ class _OrderListTabState extends State<_OrderListTab> {
     );
   }
 }
+
 
 class _PremiumOrderCard extends StatelessWidget {
   final OrderModel order;
@@ -420,45 +442,14 @@ class _PremiumOrderCard extends StatelessWidget {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: () async {
-                          final adminName = await showDialog<String>(
-                            context: context,
-                            builder: (context) {
-                              final staffs = ['Andi', 'Budi', 'Citra', 'Deni', 'Eka', 'Fajar'];
-                              return AlertDialog(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                title: const Text('Siapa yang bertugas?', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
-                                content: Wrap(
-                                  spacing: 12,
-                                  runSpacing: 12,
-                                  alignment: WrapAlignment.center,
-                                  children: staffs.map((name) => ElevatedButton.icon(
-                                    icon: const Icon(Icons.person),
-                                    label: Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                    style: ElevatedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                    ),
-                                    onPressed: () => Navigator.pop(context, name),
-                                  )).toList(),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('Batal', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
+                        final authProvider = context.read<AuthProvider>();
+                        final userName = authProvider.user?['name'] ?? 'Staf Gudang';
 
-                        if (adminName == null || adminName.trim().isEmpty) return;
-
-                        if (!context.mounted) return;
-                        final success = await context.read<OrderProvider>().startOrder(order.id, adminName.trim());
+                        final success = await context.read<OrderProvider>().startOrder(order.id, userName);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(success ? 'Tugas Packing Diambil oleh ${adminName.trim()}!' : 'Gagal memproses'),
+                              content: Text(success ? 'Tugas Packing Diambil oleh $userName!' : 'Gagal memproses'),
                               backgroundColor: success ? const Color(0xFF10B981) : Colors.red,
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../provider/order_provider.dart';
+import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/utils/watermark_util.dart';
+import '../../../../core/constants/app_constants.dart';
 
 class PackingDetailPage extends StatefulWidget {
   final int orderId;
@@ -81,7 +83,7 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
     }
   }
 
-  void _showFullScreenImage(File imageFile) {
+  void _showFullScreenImage({File? file, String? url}) {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (ctx) => Scaffold(
         backgroundColor: Colors.black,
@@ -95,7 +97,12 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
             panEnabled: true,
             minScale: 0.5,
             maxScale: 4,
-            child: Image.file(imageFile),
+            child: file != null 
+                ? Image.file(file) 
+                : Image.network(
+                    url ?? '',
+                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white, size: 50),
+                  ),
           ),
         ),
       ),
@@ -103,49 +110,18 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
   }
 
   void _handleStart(BuildContext context) async {
-    final adminName = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        final staffs = ['Andi', 'Budi', 'Citra', 'Deni', 'Eka', 'Fajar'];
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text('Siapa yang bertugas?', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
-          content: Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            alignment: WrapAlignment.center,
-            children: staffs.map((name) => ElevatedButton.icon(
-              icon: const Icon(Icons.person),
-              label: Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              onPressed: () => Navigator.pop(context, name),
-            )).toList(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Batal', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (adminName == null || adminName.trim().isEmpty) return;
-    if (!mounted) return;
+    final authProvider = context.read<AuthProvider>();
+    final userName = authProvider.user?['name'] ?? 'Staf Gudang';
 
     final provider = context.read<OrderProvider>();
-    final success = await provider.startOrder(widget.orderId, adminName.trim());
+    final success = await provider.startOrder(widget.orderId, userName);
     if (!mounted) return;
     
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Tugas Packing Diambil oleh ${adminName.trim()}!'),
-          backgroundColor: Color(0xFF10B981),
+          content: Text('Tugas Packing Diambil oleh $userName!'),
+          backgroundColor: const Color(0xFF10B981),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -182,97 +158,76 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
     provider.updatePackerName(order.id, packerName);
     
     // Show Final Check Bottom Sheet
-    final success = await showModalBottomSheet<bool>(
+    final proceed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      isDismissible: false,
-      enableDrag: false,
+      isDismissible: true,
+      enableDrag: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (bottomSheetContext) {
-        bool isLoading = false;
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.verified_user_rounded, size: 64, color: Color(0xFF10B981)),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text('Tahap Final Check', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Demi menjaga kualitas, mohon pastikan sekali lagi:\n\n'
-                      '1. Semua barang sudah masuk kardus/tas.\n'
-                      '2. Tidak ada barang yang tertinggal.\n'
-                      '3. Segel dan label resi sudah menempel kuat.',
-                      style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.5, fontWeight: FontWeight.w500),
-                      textAlign: TextAlign.left,
-                    ),
-                    const SizedBox(height: 40),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : () async {
-                          setModalState(() {
-                            isLoading = true;
-                          });
-                          try {
-                            // Finish order with both photos
-                            final ok = await provider.finishPacking(order.id, _photoIsiPaket!.path, _photoPaketFinal!.path);
-                            if (!bottomSheetContext.mounted) return;
-                            Navigator.pop(bottomSheetContext, ok); // close bottom sheet and return result
-                          } catch (e) {
-                            if (!bottomSheetContext.mounted) return;
-                            setModalState(() {
-                              isLoading = false;
-                            });
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF10B981),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 20),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 0,
-                        ),
-                        child: isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('✅ FINAL CHECK COMPLETE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: isLoading ? null : () => Navigator.pop(bottomSheetContext),
-                      child: const Text('Batal, saya mau cek ulang', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.verified_user_rounded, size: 64, color: Color(0xFF10B981)),
                 ),
-              ),
-            );
-          },
+                const SizedBox(height: 24),
+                const Text('Tahap Final Check', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 16),
+                const Text(
+                  'Demi menjaga kualitas, mohon pastikan sekali lagi:\n\n'
+                  '1. Semua barang sudah masuk kardus/tas.\n'
+                  '2. Tidak ada barang yang tertinggal.\n'
+                  '3. Segel dan label resi sudah menempel kuat.',
+                  style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.5, fontWeight: FontWeight.w500),
+                  textAlign: TextAlign.left,
+                ),
+                const SizedBox(height: 40),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(bottomSheetContext, true); // Return true to proceed
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    child: const Text('✅ FINAL CHECK COMPLETE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.pop(bottomSheetContext, false),
+                  child: const Text('Batal, saya mau cek ulang', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
         );
       },
     );
 
-    if (success != null && mounted) {
+    if (proceed == true && mounted) {
+      // Trigger the actual file and data upload on the main page.
+      // This will set provider.isLoading to true and display the full-screen freeze loading overlay.
+      final success = await provider.finishPacking(order.id, _photoIsiPaket!.path, _photoPaketFinal!.path);
+      
+      if (!mounted) return;
+      
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -283,8 +238,9 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
         );
         Navigator.of(context).pop(); // Go back to list
       } else {
+        final errMsg = provider.lastUploadError ?? 'Gagal menyelesaikan pesanan.';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal menyelesaikan pesanan.'), backgroundColor: Colors.red),
+          SnackBar(content: Text(errMsg), backgroundColor: Colors.red),
         );
       }
     }
@@ -653,7 +609,9 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
           ),
         ],
       ),
-      body: Consumer<OrderProvider>(
+      body: Stack(
+        children: [
+          Consumer<OrderProvider>(
         builder: (context, provider, child) {
           final idx = provider.orders.indexWhere((o) => o.id == widget.orderId);
           if (idx == -1) {
@@ -696,12 +654,28 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: isPreparation ? const Color(0xFFF59E0B).withOpacity(0.15) : const Color(0xFF3B82F6).withOpacity(0.15),
+                            color: order.status == 'onpreparation'
+                                ? const Color(0xFFF59E0B).withOpacity(0.15)
+                                : order.status == 'prepared'
+                                    ? const Color(0xFF10B981).withOpacity(0.15)
+                                    : const Color(0xFF3B82F6).withOpacity(0.15),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            isPreparation ? '🟠 PREPARING' : '🟡 NEW ORDER', 
-                            style: TextStyle(color: isPreparation ? const Color(0xFFD97706) : const Color(0xFF2563EB), fontWeight: FontWeight.w700, fontSize: 12)
+                            order.status == 'onpreparation'
+                                ? '🟠 PREPARING'
+                                : order.status == 'prepared'
+                                    ? '🟢 WAITING DRIVER'
+                                    : '🟡 NEW ORDER', 
+                            style: TextStyle(
+                              color: order.status == 'onpreparation'
+                                  ? const Color(0xFFD97706)
+                                  : order.status == 'prepared'
+                                      ? const Color(0xFF10B981)
+                                      : const Color(0xFF2563EB),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ],
@@ -951,7 +925,7 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
                         ),
                         const SizedBox(height: 32),
                       ],
-                      if (isPreparation) ...[
+                      if (isPreparation || order.status == 'prepared') ...[
                         // Packer Info Section
                         const Text('Konfirmasi', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 16),
@@ -983,7 +957,7 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
                                       children: [
                                         Text('Staf Bertugas', style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.bold)),
                                         Text(
-                                          order.assignedTo ?? 'Belum ada',
+                                          order.packerName ?? order.assignedTo ?? 'Belum ada',
                                           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Theme.of(context).colorScheme.primary),
                                         ),
                                       ],
@@ -996,27 +970,39 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
                             const SizedBox(height: 24),
                             
                             // Foto Isi Paket
-                            const Text('Foto 1: Isi Paket (Sebelum Disegel) *', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
+                            const Text('Foto 1: Isi Paket (Sebelum Disegel)', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
                             const SizedBox(height: 12),
                             GestureDetector(
-                              onTap: () => _photoIsiPaket == null ? _pickImage(false) : _showFullScreenImage(_photoIsiPaket!),
+                              onTap: () {
+                                if (isPreparation) {
+                                  _photoIsiPaket == null ? _pickImage(false) : _showFullScreenImage(file: _photoIsiPaket!);
+                                } else if (order.packingProofPhoto != null) {
+                                  _showFullScreenImage(url: AppConstants.storageUrl + order.packingProofPhoto!);
+                                }
+                              },
                               child: Container(
                                 height: 180,
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: _photoIsiPaket != null ? Colors.transparent : Theme.of(context).colorScheme.primary.withOpacity(0.05),
+                                  color: (_photoIsiPaket != null || (order.packingProofPhoto != null && !isPreparation)) ? Colors.transparent : Theme.of(context).colorScheme.primary.withOpacity(0.05),
                                   borderRadius: BorderRadius.circular(20),
-                                  border: _photoIsiPaket == null 
+                                  border: (_photoIsiPaket == null && (order.packingProofPhoto == null || isPreparation)) 
                                     ? Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3), width: 2)
                                     : null,
                                 ),
-                                child: _photoIsiPaket != null
+                                child: (_photoIsiPaket != null || (order.packingProofPhoto != null && !isPreparation))
                                     ? Stack(
                                         fit: StackFit.expand,
                                         children: [
                                           ClipRRect(
                                             borderRadius: BorderRadius.circular(20),
-                                            child: Image.file(_photoIsiPaket!, fit: BoxFit.cover),
+                                            child: isPreparation 
+                                                ? Image.file(_photoIsiPaket!, fit: BoxFit.cover)
+                                                : Image.network(
+                                                    AppConstants.storageUrl + order.packingProofPhoto!,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.grey, size: 40),
+                                                  ),
                                           ),
                                           Positioned(
                                             top: 0, left: 0, right: 0, bottom: 0,
@@ -1035,33 +1021,37 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
                                                 Text('Disimpan otomatis:', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11)),
-                                                Text('${_timeIsiPaket?.toString().substring(0, 16)} WIB', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-                                                Text('Staf: ${order.assignedTo ?? "Belum diisi"}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                                                Text(isPreparation 
+                                                    ? '${_timeIsiPaket?.toString().substring(0, 16)} WIB'
+                                                    : '${order.packedAt != null ? order.packedAt!.toLocal().toString().substring(0, 16) : order.createdAt.toLocal().toString().substring(0, 16)} WIB', 
+                                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                                                Text('Staf: ${order.packerName ?? order.assignedTo ?? "Staf Gudang"}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
                                               ],
                                             ),
                                           ),
-                                          Positioned(
-                                            top: 12,
-                                            right: 12,
-                                            child: GestureDetector(
-                                              onTap: () => _pickImage(false),
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.black.withOpacity(0.7),
-                                                  borderRadius: BorderRadius.circular(30),
-                                                ),
-                                                child: const Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    Icon(Icons.cameraswitch_rounded, color: Colors.white, size: 16),
-                                                    SizedBox(width: 8),
-                                                    Text('Retake', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                                                  ],
+                                          if (isPreparation)
+                                            Positioned(
+                                              top: 12,
+                                              right: 12,
+                                              child: GestureDetector(
+                                                onTap: () => _pickImage(false),
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black.withOpacity(0.7),
+                                                    borderRadius: BorderRadius.circular(30),
+                                                  ),
+                                                  child: const Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(Icons.cameraswitch_rounded, color: Colors.white, size: 16),
+                                                      SizedBox(width: 8),
+                                                      Text('Retake', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          )
+                                            )
                                         ],
                                       )
                                     : Column(
@@ -1088,27 +1078,39 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
                             const SizedBox(height: 24),
                             
                             // Foto Paket Final
-                            const Text('Foto 2: Paket Final + Label Resi *', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
+                            const Text('Foto 2: Paket Final + Label Resi', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
                             const SizedBox(height: 12),
                             GestureDetector(
-                              onTap: () => _photoPaketFinal == null ? _pickImage(true) : _showFullScreenImage(_photoPaketFinal!),
+                              onTap: () {
+                                if (isPreparation) {
+                                  _photoPaketFinal == null ? _pickImage(true) : _showFullScreenImage(file: _photoPaketFinal!);
+                                } else if (order.packingProofPhotoFinal != null) {
+                                  _showFullScreenImage(url: AppConstants.storageUrl + order.packingProofPhotoFinal!);
+                                }
+                              },
                               child: Container(
                                 height: 180,
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: _photoPaketFinal != null ? Colors.transparent : Theme.of(context).colorScheme.primary.withOpacity(0.05),
+                                  color: (_photoPaketFinal != null || (order.packingProofPhotoFinal != null && !isPreparation)) ? Colors.transparent : Theme.of(context).colorScheme.primary.withOpacity(0.05),
                                   borderRadius: BorderRadius.circular(20),
-                                  border: _photoPaketFinal == null 
+                                  border: (_photoPaketFinal == null && (order.packingProofPhotoFinal == null || isPreparation)) 
                                     ? Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3), width: 2)
                                     : null,
                                 ),
-                                child: _photoPaketFinal != null
+                                child: (_photoPaketFinal != null || (order.packingProofPhotoFinal != null && !isPreparation))
                                     ? Stack(
                                         fit: StackFit.expand,
                                         children: [
                                           ClipRRect(
                                             borderRadius: BorderRadius.circular(20),
-                                            child: Image.file(_photoPaketFinal!, fit: BoxFit.cover),
+                                            child: isPreparation 
+                                                ? Image.file(_photoPaketFinal!, fit: BoxFit.cover)
+                                                : Image.network(
+                                                    AppConstants.storageUrl + order.packingProofPhotoFinal!,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.grey, size: 40),
+                                                  ),
                                           ),
                                           Positioned(
                                             top: 0, left: 0, right: 0, bottom: 0,
@@ -1127,33 +1129,37 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
                                                 Text('Disimpan otomatis:', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11)),
-                                                Text('${_timePaketFinal?.toString().substring(0, 16)} WIB', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-                                                Text('Staf: ${order.assignedTo ?? "Belum diisi"}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                                                Text(isPreparation 
+                                                    ? '${_timePaketFinal?.toString().substring(0, 16)} WIB'
+                                                    : '${order.packedAt != null ? order.packedAt!.toLocal().toString().substring(0, 16) : order.createdAt.toLocal().toString().substring(0, 16)} WIB', 
+                                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                                                Text('Staf: ${order.packerName ?? order.assignedTo ?? "Staf Gudang"}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
                                               ],
                                             ),
                                           ),
-                                          Positioned(
-                                            top: 12,
-                                            right: 12,
-                                            child: GestureDetector(
-                                              onTap: () => _pickImage(true),
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.black.withOpacity(0.7),
-                                                  borderRadius: BorderRadius.circular(30),
-                                                ),
-                                                child: const Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    Icon(Icons.cameraswitch_rounded, color: Colors.white, size: 16),
-                                                    SizedBox(width: 8),
-                                                    Text('Retake', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                                                  ],
+                                          if (isPreparation)
+                                            Positioned(
+                                              top: 12,
+                                              right: 12,
+                                              child: GestureDetector(
+                                                onTap: () => _pickImage(true),
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black.withOpacity(0.7),
+                                                    borderRadius: BorderRadius.circular(30),
+                                                  ),
+                                                  child: const Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(Icons.cameraswitch_rounded, color: Colors.white, size: 16),
+                                                      SizedBox(width: 8),
+                                                      Text('Retake', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          )
+                                            )
                                         ],
                                       )
                                     : Column(
@@ -1189,11 +1195,46 @@ class _PackingDetailPageState extends State<PackingDetailPage> {
           );
         },
       ),
+      Consumer<OrderProvider>(
+        builder: (context, provider, child) {
+          if (!provider.isLoading) return const SizedBox.shrink();
+          return PopScope(
+            canPop: false,
+            child: Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: Card(
+                  margin: EdgeInsets.symmetric(horizontal: 32),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 24),
+                        Text(
+                          'Memproses...',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    ],
+  ),
       bottomNavigationBar: Consumer<OrderProvider>(
         builder: (context, provider, child) {
           final idx = provider.orders.indexWhere((o) => o.id == widget.orderId);
           if (idx == -1) return const SizedBox.shrink();
-          final isPreparation = provider.orders[idx].status == 'onpreparation';
+          final order = provider.orders[idx];
+          if (order.status == 'prepared') return const SizedBox.shrink();
+          final isPreparation = order.status == 'onpreparation';
 
           return Container(
             padding: const EdgeInsets.all(24),

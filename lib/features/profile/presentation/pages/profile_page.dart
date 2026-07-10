@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/providers/auth_provider.dart';
+import '../../../../core/constants/app_constants.dart';
 import 'edit_profile_page.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -30,7 +31,7 @@ class ProfilePage extends StatelessWidget {
                       child: CircleAvatar(
                         radius: 50,
                         backgroundColor: Colors.grey[200],
-                        backgroundImage: user['photo'] != null ? NetworkImage(user['photo']) : null,
+                        backgroundImage: user['photo'] != null ? NetworkImage(AppConstants.storageUrl + user['photo']) : null,
                         child: user['photo'] == null ? const Icon(Icons.person, size: 50, color: Colors.grey) : null,
                       ),
                     ),
@@ -85,7 +86,7 @@ class ProfilePage extends StatelessWidget {
                             leading: const Icon(Icons.logout, color: Colors.red),
                             title: const Text('Keluar', style: TextStyle(color: Colors.red)),
                             onTap: () {
-                              // Handle logout
+                              context.read<AuthProvider>().logout();
                             },
                           ),
                         ],

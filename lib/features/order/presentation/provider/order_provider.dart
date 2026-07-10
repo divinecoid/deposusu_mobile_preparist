@@ -14,31 +14,30 @@ class OrderProvider extends ChangeNotifier {
   List<OrderModel> _orders = [];
   bool _isLoading = false;
   String? _error;
+  String? _lastUploadError;
 
   List<OrderModel> get orders => _orders;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String? get lastUploadError => _lastUploadError;
 
 
 
-  Future<void> fetchOrders({String status = 'onprocess'}) async {
+  Future<void> fetchOrders({String status = 'onprocess', String? historyStatus}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final apiOrders = await repository.getOrders(status);
+      final apiOrders = await repository.getOrders(status, historyStatus: historyStatus);
       if (status == 'onprocess') {
         _onProcessOrders = apiOrders;
-        _onProcessOrders.sort(_sortScore);
         _orders = List.from(_onProcessOrders);
       } else if (status == 'onpreparation') {
         _onPreparationOrders = apiOrders;
-        _onPreparationOrders.sort(_sortScore);
         _orders = List.from(_onPreparationOrders);
       } else if (status == 'prepared') {
         _preparedOrders = apiOrders;
-        _preparedOrders.sort(_sortScore);
         _orders = List.from(_preparedOrders);
       } else if (status == 'history') {
         _historyOrders = apiOrders;
@@ -64,11 +63,6 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
-  int _sortScore(OrderModel a, OrderModel b) {
-    // FIFO tunggal: order yang lebih lama diproses lebih dulu
-    return a.createdAt.compareTo(b.createdAt);
-  }
-
   Future<bool> startOrder(int id, String adminName) async {
     _isLoading = true;
     notifyListeners();
@@ -79,7 +73,6 @@ class OrderProvider extends ChangeNotifier {
       if (idx != -1) {
         final order = _onProcessOrders.removeAt(idx);
         _onPreparationOrders.add(order.copyWith(status: 'onpreparation', assignedTo: adminName));
-        _onPreparationOrders.sort(_sortScore);
       }
       _orders = List.from(_onProcessOrders);
       return true;
@@ -186,24 +179,55 @@ class OrderProvider extends ChangeNotifier {
 
   Future<bool> finishPacking(int orderId, String photoIsiPath, String photoFinalPath) async {
     _isLoading = true;
+    _lastUploadError = null;
     notifyListeners();
 
     try {
-      final success = await repository.finishPreparation(orderId, photoIsiPath, photoFinalPath);
+      final orderIdx = _onPreparationOrders.indexWhere((o) => o.id == orderId);
+      if (orderIdx == -1) {
+        _lastUploadError = 'Pesanan tidak ditemukan di memory lokal.';
+        return false;
+      }
+
+      final order = _onPreparationOrders[orderIdx];
+      final itemsPayload = order.items.map((item) => {
+        'id': item.id,
+        'checked_quantity': item.checkedQuantity,
+      }).toList();
+      final logsPayload = order.editLogs;
+
+      final success = await repository.finishPreparation(
+        orderId, 
+        photoIsiPath, 
+        photoFinalPath,
+        items: itemsPayload,
+        logs: logsPayload,
+      );
+
       if (success) {
-        final idx = _onPreparationOrders.indexWhere((o) => o.id == orderId);
-        if (idx != -1) {
-          final order = _onPreparationOrders.removeAt(idx);
-          _preparedOrders.add(order.copyWith(status: 'prepared'));
-          _preparedOrders.sort(_sortScore);
-        }
+        _onPreparationOrders.removeAt(orderIdx);
+        _preparedOrders.add(order.copyWith(status: 'prepared'));
         _orders = List.from(_onPreparationOrders);
         return true;
       }
+      _lastUploadError = 'Server menolak upload foto. Cek koneksi atau coba lagi.';
       return false;
     } catch (e) {
       print('API Error finishPacking: $e');
       _error = e.toString();
+      if (e.toString().contains('TimeoutException')) {
+        _lastUploadError = 'Koneksi timeout saat upload foto. Pastikan WiFi stabil lalu coba lagi.';
+      } else if (e.toString().contains('SocketException')) {
+        _lastUploadError = 'Tidak ada koneksi internet. Periksa jaringan lalu coba lagi.';
+      } else if (e.toString().contains('HTTP 403')) {
+        _lastUploadError = 'Akses ditolak (403). Pesanan ini tidak di-assign ke akun kamu.';
+      } else if (e.toString().contains('HTTP 422')) {
+        _lastUploadError = 'Validasi gagal (422). Format foto tidak diterima server.';
+      } else if (e.toString().contains('HTTP 5')) {
+        _lastUploadError = 'Server error. Coba lagi beberapa saat.';
+      } else {
+        _lastUploadError = 'Gagal upload foto: ${e.toString()}';
+      }
       return false;
     } finally {
       _isLoading = false;

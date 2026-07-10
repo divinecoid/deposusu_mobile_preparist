@@ -1,23 +1,42 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../network/api_client.dart';
+import '../routes/global_keys.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiClient _apiClient;
   Map<String, dynamic>? _user;
   bool _isLoading = false;
+  String? _error;
+  String? _profileError;
 
   AuthProvider(this._apiClient) {
-    _fetchUser();
+    _apiClient.onUnauthorized = () {
+      logout();
+    };
+    _init();
   }
 
   Map<String, dynamic>? get user => _user;
   bool get isLoading => _isLoading;
+  String? get error => _error;
+  String? get profileError => _profileError;
+  bool get isAuthenticated => _apiClient.token != null;
 
-  Future<void> _fetchUser() async {
+  Future<void> _init() async {
     _isLoading = true;
     notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    if (token != null) {
+      _apiClient.setToken(token);
+    }
+    await _fetchUser();
+  }
+
+  Future<void> _fetchUser() async {
     try {
       final response = await _apiClient.get('/user');
       if (response.statusCode == 200) {
@@ -31,9 +50,68 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateBasicProfile(String name, String? photoPath) async {
+  Future<bool> login(String email, String password) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
-      final fields = {'name': name};
+      final response = await _apiClient.post(
+        '/login',
+        body: {
+          'email': email,
+          'password': password,
+        },
+      );
+
+      final decoded = jsonDecode(response.body);
+      if (response.statusCode == 200 && decoded['success'] == true) {
+        final token = decoded['token'];
+        if (token != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('auth_token', token);
+          _apiClient.setToken(token);
+        }
+        _user = decoded['user'];
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _error = decoded['message'] ?? 'Login failed';
+      }
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+    }
+
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+    _apiClient.setToken(null);
+    _user = null;
+    notifyListeners();
+    
+    // Redirect to login page
+    GlobalKeys.navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
+  }
+
+  Future<bool> updateBasicProfile({
+    required String name,
+    String? phone,
+    String? email,
+    String? photoPath,
+  }) async {
+    _profileError = null;
+    try {
+      final fields = {
+        'name': name,
+        if (phone != null) 'phone': phone,
+        if (email != null) 'email': email,
+      };
       final files = <http.MultipartFile>[];
       if (photoPath != null && photoPath.isNotEmpty) {
         files.add(await http.MultipartFile.fromPath('photo', photoPath));
@@ -45,18 +123,29 @@ class AuthProvider extends ChangeNotifier {
         files: files,
       );
 
+      final responseBody = await response.stream.bytesToString();
+      print('[updateBasicProfile] status: ${response.statusCode}, body: $responseBody');
+
+      final decoded = jsonDecode(responseBody);
       if (response.statusCode == 200) {
-        final responseBody = await response.stream.bytesToString();
-        final decoded = jsonDecode(responseBody);
         if (decoded['success'] == true) {
           _user = decoded['user'];
           notifyListeners();
           return true;
         }
+      } else {
+        if (decoded['errors'] != null) {
+          final Map<String, dynamic> errors = decoded['errors'];
+          _profileError = errors.values.first.first.toString();
+        } else {
+          _profileError = decoded['message'] ?? 'Gagal memperbarui profil.';
+        }
       }
     } catch (e) {
       debugPrint("Update basic profile error: $e");
+      _profileError = e.toString();
     }
+    notifyListeners();
     return false;
   }
 
